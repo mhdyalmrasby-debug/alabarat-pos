@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>المنتجات - العَبَرات</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Cairo', sans-serif; }
+.bg-navy { background-color: #0B2545; }.bg-gold { background-color: #F5B301; }
+  .modal { display: none; position: fixed; z-index: 50; inset: 0; background: rgba(0,0,0,0.5); }
+  .modal.active { display: flex; }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div class="bg-navy text-white p-4">
+    <div class="container mx-auto flex justify-between items-center">
+      <h1 class="text-2xl font-black">إدارة المنتجات</h1>
+      <a href="dashboard.html" class="bg-gold text-navy px-4 py-2 rounded font-bold">لوحة التحكم</a>
+    </div>
+  </div>
+
+  <div class="container mx-auto p-6">
+    <!-- فورم إضافة منتج -->
+    <div class="bg-white p-6 rounded-lg shadow mb-6">
+      <h3 class="text-xl font-bold text-navy mb-4">إضافة منتج جديد</h3>
+      <form id="productForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <input id="name" placeholder="اسم المنتج" class="p-3 border rounded" required>
+        <input id="barcode" placeholder="الباركود" class="p-3 border rounded">
+        <input id="cost_price" type="number" step="0.01" placeholder="سعر التكلفة" class="p-3 border rounded" required>
+        <input id="selling_price" type="number" step="0.01" placeholder="سعر البيع" class="p-3 border rounded" required>
+        <input id="stock_qty" type="number" placeholder="الكمية" class="p-3 border rounded" required>
+        <input id="expiry_date" type="date" placeholder="تاريخ الانتهاء" class="p-3 border rounded">
+        <button type="submit" class="bg-gold text-navy font-bold p-3 rounded md:col-span-3">حفظ المنتج</button>
+      </form>
+    </div>
+
+    <!-- جدول المنتجات -->
+    <div class="bg-white p-6 rounded-lg shadow">
+      <h3 class="text-xl font-bold text-navy mb-4">قائمة المنتجات</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="p-3 text-right">المنتج</th>
+              <th class="p-3 text-right">الباركود</th>
+              <th class="p-3 text-right">التكلفة</th>
+              <th class="p-3 text-right">البيع</th>
+              <th class="p-3 text-right">الكمية</th>
+              <th class="p-3 text-right">تاريخ الانتهاء</th>
+              <th class="p-3 text-right">الحالة</th>
+              <th class="p-3 text-center">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="productsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal التعديل -->
+  <div id="editModal" class="modal items-center justify-center">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl m-4">
+      <h3 class="text-xl font-bold text-navy mb-4">تعديل المنتج</h3>
+      <form id="editForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input type="hidden" id="edit_id">
+        <input id="edit_name" placeholder="اسم المنتج" class="p-3 border rounded" required>
+        <input id="edit_barcode" placeholder="الباركود" class="p-3 border rounded">
+        <input id="edit_cost_price" type="number" step="0.01" placeholder="سعر التكلفة" class="p-3 border rounded" required>
+        <input id="edit_selling_price" type="number" step="0.01" placeholder="سعر البيع" class="p-3 border rounded" required>
+        <input id="edit_stock_qty" type="number" placeholder="الكمية" class="p-3 border rounded" required>
+        <input id="edit_expiry_date" type="date" placeholder="تاريخ الانتهاء" class="p-3 border rounded">
+        <div class="md:col-span-2 flex gap-3">
+          <button type="submit" class="bg-green-600 text-white font-bold p-3 rounded flex-1">حفظ التعديل</button>
+          <button type="button" onclick="closeModal()" class="bg-gray-400 text-white font-bold p-3 rounded flex-1">إلغاء</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+  const supabase = createClient('https://eeiegignudoedrlkuaqn.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlaWVnaWdudWRvZWRybGt1YXFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODUwNzMsImV4cCI6MjA5MzA2MTA3M30.gtqh1KbGmXZ9VBkmpFCYtJetn1ZXPHcp5oX9sENBb2Q')
+
+  let currentStore = null;
+  let allProducts = [];
+
+  async function init() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { window.location.href = 'alabarat.html'; return; }
+    const { data: store } = await supabase.from('stores').select().eq('user_id', user.id).single();
+    currentStore = store;
+    loadProducts();
+  }
+
+  document.getElementById('productForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const product = {
+      store_id: currentStore.id,
+      name: document.getElementById('name').value,
+      barcode: document.getElementById('barcode').value || null,
+      cost_price: parseFloat(document.getElementById('cost_price').value),
+      selling_price: parseFloat(document.getElementById('selling_price').value),
+      stock_qty: parseInt(document.getElementById('stock_qty').value),
+      expiry_date: document.getElementById('expiry_date').value || null
+    };
+
+    const { error } = await supabase.from('products').insert([product]);
+    if(error) {
+      alert('خطأ: ' + error.message);
+    } else {
+      alert('تم حفظ المنتج');
+      e.target.reset();
+      loadProducts();
+    }
+  });
+
+  async function loadProducts() {
+    const { data: products, error } = await supabase.from('products')
+  .select()
+  .eq('store_id', currentStore.id)
+  .order('created_at', { ascending: false });
+
+    if(error) { alert('خطأ تحميل: ' + error.message); return; }
+    allProducts = products || [];
+
+    const today = new Date();
+    const tbody = document.getElementById('productsTable');
+
+    tbody.innerHTML = allProducts.map(p => {
+      let status = '<span class="text-green-600 text-xs">سليم</span>';
+      if(p.expiry_date) {
+        const expDate = new Date(p.expiry_date);
+        const daysLeft = Math.ceil((expDate - today) / (1000*60*60*24));
+        if(expDate < today) {
+          status = '<span class="bg-red-600 text-white px-2 py-1 rounded text-xs">منتهي</span>';
+        } else if(daysLeft <= 10) {
+          status = `<span class="bg-yellow-500 text-white px-2 py-1 rounded text-xs">باقي ${daysLeft} يوم</span>`;
+        }
+      }
+
+      return `<tr class="border-b hover:bg-gray-50">
+        <td class="p-3 font-bold">${p.name}</td>
+        <td class="p-3">${p.barcode || '-'}</td>
+        <td class="p-3">${Number(p.cost_price).toFixed(2)}</td>
+        <td class="p-3">${Number(p.selling_price).toFixed(2)}</td>
+        <td class="p-3">${p.stock_qty}</td>
+        <td class="p-3">${p.expiry_date || '-'}</td>
+        <td class="p-3">${status}</td>
+        <td class="p-3 text-center">
+          <!-- استبدل السطر حق زر التعديل في الجدول بهذا -->
+<button onclick="fillForm('${p.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs ml-1">تعديل</button>
+          <button onclick="deleteProduct('${p.id}')" class="bg-red-600 text-white px-3 py-1 rounded text-xs">حذف</button>
+        </td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="8" class="p-4 text-center text-gray-400">لا توجد منتجات</td></tr>';
+  }
+
+  window.openEdit = (id) => {
+    const p = allProducts.find(x => x.id === id);
+    if(!p) return;
+
+    document.getElementById('edit_id').value = p.id;
+    document.getElementById('edit_name').value = p.name;
+    document.getElementById('edit_barcode').value = p.barcode || '';
+    document.getElementById('edit_cost_price').value = p.cost_price;
+    document.getElementById('edit_selling_price').value = p.selling_price;
+    document.getElementById('edit_stock_qty').value = p.stock_qty;
+    document.getElementById('edit_expiry_date').value = p.expiry_date || '';
+
+    document.getElementById('editModal').classList.add('active');
+  }
+
+  window.closeModal = () => {
+    document.getElementById('editModal').classList.remove('active');
+  }
+
+  document.getElementById('editForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit_id').value;
+    const updated = {
+      name: document.getElementById('edit_name').value,
+      barcode: document.getElementById('edit_barcode').value || null,
+      cost_price: parseFloat(document.getElementById('edit_cost_price').value),
+      selling_price: parseFloat(document.getElementById('edit_selling_price').value),
+      stock_qty: parseInt(document.getElementById('edit_stock_qty').value),
+      expiry_date: document.getElementById('edit_expiry_date').value || null
+    };
+
+    const { error } = await supabase.from('products').update(updated).eq('id', id);
+    if(error) {
+      alert('خطأ: ' + error.message);
+    } else {
+      alert('تم التحديث');
+      closeModal();
+      loadProducts();
+    }
+  });
+
+  window.deleteProduct = async (id) => {
+    if(!confirm('متأكد تبي تحذف المنتج؟')) return;
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if(error) {
+      alert('خطأ: ' + error.message);
+    } else {
+      alert('تم الحذف');
+      loadProducts();
+    }
+  }
+window.fillForm = (id) => {
+  const p = allProducts.find(x => x.id === id);
+  if(!p) return;
+  document.getElementById('name').value = p.name;
+  document.getElementById('barcode').value = p.barcode || '';
+  document.getElementById('cost_price').value = p.cost_price;
+  document.getElementById('selling_price').value = p.selling_price;
+  document.getElementById('stock_qty').value = p.stock_qty;
+  document.getElementById('expiry_date').value = p.expiry_date || '';
+  document.getElementById('productForm').setAttribute('data-edit-id', id);
+  window.scrollTo(0, 0);
+  alert('عدل البيانات فوق واضغط حفظ المنتج');
+}
+
+// وعدل سبمت الفورم عشان يعرف يفرق بين إضافة وتعديل
+document.getElementById('productForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const editId = e.target.getAttribute('data-edit-id');
+  const product = {
+    store_id: currentStore.id,
+    name: document.getElementById('name').value,
+    barcode: document.getElementById('barcode').value || null,
+    cost_price: parseFloat(document.getElementById('cost_price').value),
+    selling_price: parseFloat(document.getElementById('selling_price').value),
+    stock_qty: parseInt(document.getElementById('stock_qty').value),
+    expiry_date: document.getElementById('expiry_date').value || null
+  };
+
+  let error;
+  if(editId) {
+    // تعديل
+    ({ error } = await supabase.from('products').update(product).eq('id', editId));
+    e.target.removeAttribute('data-edit-id');
+  } else {
+    // إضافة
+    ({ error } = await supabase.from('products').insert([product]));
+  }
+
+  if(error) {
+    alert('خطأ: ' + error.message);
+  } else {
+    alert(editId? 'تم التحديث' : 'تم حفظ المنتج');
+    e.target.reset();
+    loadProducts();
+  }
+});
+  init();
+</script>
+</body>
+</html>

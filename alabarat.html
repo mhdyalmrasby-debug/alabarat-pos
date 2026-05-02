@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الكاشير - العَبَرات</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Cairo', sans-serif; } 
+    .bg-navy { background-color: #0B2545; } .bg-gold { background-color: #F5B301; }
+    .pos-grid { grid-template-columns: 1fr 380px; }
+  </style>
+</head>
+<body class="bg-gray-200 h-screen">
+  <div class="grid pos-grid h-full">
+    <!-- شبكة المنتجات -->
+    <div class="bg-white p-4 overflow-y-auto">
+      <div class="flex justify-between items-center mb-4">
+        <h1 id="storeName" class="text-2xl font-black text-navy">الكاشير</h1>
+        <a href="dashboard.html" class="text-sm text-navy">← لوحة التحكم</a>
+      </div>
+      <div id="productsGrid" class="grid grid-cols-3 md:grid-cols-5 gap-3"></div>
+    </div>
+
+    <!-- الفاتورة -->
+    <div class="bg-navy text-white p-4 flex flex-col">
+      <h2 class="text-xl font-bold mb-4">الفاتورة الحالية</h2>
+      <div id="cartItems" class="flex-1 overflow-y-auto mb-4"></div>
+      <div class="border-t border-gray-600 pt-4">
+        <div class="flex justify-between text-3xl font-black mb-4">
+          <span>الإجمالي:</span>
+          <span id="total">0.00 ر.س</span>
+        </div>
+        <button onclick="checkout()" id="checkoutBtn" class="w-full bg-gold text-navy py-4 rounded-lg text-xl font-black disabled:bg-gray-500">بيع ودفع</button>
+        <div id="msg" class="text-center mt-2 text-sm"></div>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+  const supabase = createClient('https://eeiegignudoedrlkuaqn.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlaWVnaWdudWRvZWRybGt1YXFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODUwNzMsImV4cCI6MjA5MzA2MTA3M30.gtqh1KbGmXZ9VBkmpFCYtJetn1ZXPHcp5oX9sENBb2Q')
+  
+  let currentStore = null;
+  let cart = [];
+  let allProducts = [];
+
+  async function init() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { window.location.href = 'alabarat.html'; return; }
+    
+    const { data: store } = await supabase.from('stores').select().eq('user_id', user.id).single();
+    currentStore = store;
+    document.getElementById('storeName').textContent = 'كاشير: ' + store.store_name;
+    await loadProducts();
+  }
+
+  async function loadProducts() {
+    const { data: products } = await supabase.from('products').select().eq('store_id', currentStore.id).gt('stock', 0);
+    allProducts = products;
+    const grid = document.getElementById('productsGrid');
+    grid.innerHTML = '';
+    products.forEach(p => {
+      grid.innerHTML += `
+        <button onclick="addToCart(${p.id})" class="bg-gray-100 p-2 rounded-lg text-center active:bg-gold text-navy">
+          <div class="font-bold text-sm">${p.name}</div>
+          <div class="text-lg font-black">${p.price} ر.س</div>
+          <div class="text-xs text-gray-500">متوفر: ${p.stock}</div>
+        </button>`;
+    });
+  }
+
+  window.addToCart = (productId) => {
+    const product = allProducts.find(p => p.id === productId);
+    const existing = cart.find(item => item.id === productId);
+    if (existing) {
+      if (existing.qty < product.stock) existing.qty++;
+      else return;
+    } else {
+      cart.push({ ...product, qty: 1 });
+    }
+    renderCart();
+  }
+
+  function renderCart() {
+    const cartDiv = document.getElementById('cartItems');
+    let total = 0;
+    cartDiv.innerHTML = '';
+    cart.forEach(item => {
+      total += item.price * item.qty;
+      cartDiv.innerHTML += `
+        <div class="flex justify-between items-center mb-2 bg-white/10 p-2 rounded">
+          <div>
+            <div class="font-bold">${item.name}</div>
+            <div class="text-sm">${item.qty} x ${item.price}</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="updateQty(${item.id}, -1)" class="bg-white/20 px-2 rounded">-</button>
+            <div class="font-bold">${(item.price * item.qty).toFixed(2)}</div>
+            <button onclick="updateQty(${item.id}, 1)" class="bg-white/20 px-2 rounded">+</button>
+          </div>
+        </div>`;
+    });
+    document.getElementById('total').textContent = total.toFixed(2) + ' ر.س';
+    document.getElementById('checkoutBtn').disabled = cart.length === 0;
+  }
+
+  window.updateQty = (productId, change) => {
+    const item = cart.find(i => i.id === productId);
+    const product = allProducts.find(p => p.id === productId);
+    item.qty += change;
+    if (item.qty <= 0) cart = cart.filter(i => i.id !== productId);
+    if (item.qty > product.stock) item.qty = product.stock;
+    renderCart();
+  }
+
+  window.checkout = async () => {
+    if (cart.length === 0) return;
+    const msg = document.getElementById('msg');
+    const btn = document.getElementById('checkoutBtn');
+    btn.disabled = true;
+    msg.textContent = 'جاري حفظ الفاتورة...';
+
+    const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+
+    // 1. ننشئ فاتورة جديدة في جدول sales
+    const { data: sale, error: saleError } = await supabase.from('sales').insert({
+      store_id: currentStore.id,
+      total_amount: total
+    }).select().single();
+
+    if (saleError) { msg.textContent = 'خطأ: ' + saleError.message; btn.disabled = false; return; }
+
+    // 2. نضيف منتجات الفاتورة في sale_items
+    const saleItems = cart.map(item => ({
+      sale_id: sale.id,
+      product_id: item.id,
+      quantity: item.qty,
+      price_at_sale: item.price
+    }));
+    await supabase.from('sale_items').insert(saleItems);
+
+    // 3. نخصم من المخزون
+    for (const item of cart) {
+      await supabase.from('products')
+        .update({ stock: item.stock - item.qty })
+        .eq('id', item.id);
+    }
+    
+    msg.textContent = 'تم البيع بنجاح ✅';
+    cart = [];
+    renderCart();
+    await loadProducts(); // نحدث شبكة المنتجات بالمخزون الجديد
+    setTimeout(() => { msg.textContent = ''; btn.disabled = false; }, 2000);
+  }
+
+  init();
+</script>
+</body>
+</html>

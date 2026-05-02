@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الكاشير - العَبَرات</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Cairo', sans-serif; }
+ .bg-navy { background-color: #0B2545; }.bg-gold { background-color: #F5B301; }
+ .pos-grid { grid-template-columns: 1fr 480px; }
+    #reader { width: 100%; border: 3px solid #F5B301; border-radius: 8px; }
+ .modal { background-color: rgba(0,0,0,0.8); }
+    @media print {
+      body * { visibility: hidden; }
+      #invoiceThermal, #invoiceThermal * { visibility: visible; }
+      #invoiceThermal { position: absolute; left: 0; top: 0; width: 80mm; font-size: 11px; padding: 2mm; line-height: 1.4; }
+    }
+    #invoiceA4 { width: 210mm; min-height: 297mm; padding: 15mm; background: white; color: black; }
+  </style>
+</head>
+<body class="bg-gray-200 h-screen">
+  <div class="grid pos-grid h-full no-print">
+    <div class="bg-white p-4 overflow-y-auto">
+      <div class="flex justify-between items-center mb-4">
+        <h1 id="storeName" class="text-2xl font-black text-navy">الكاشير</h1>
+        <div class="flex gap-2">
+          <button onclick="openScanner()" class="bg-green-600 text-white px-4 py-1 rounded text-sm font-bold">📷 باركود</button>
+          <a href="customers.html" class="bg-purple-600 text-white px-3 py-1 rounded text-sm">العملاء</a>
+          <button onclick="printLastInvoice()" id="printBtn" class="bg-gray-600 text-white px-3 py-1 rounded text-sm" disabled>طباعة</button>
+          <button onclick="downloadPDF()" id="pdfBtn" class="bg-red-600 text-white px-3 py-1 rounded text-sm" disabled>PDF</button>
+          <a href="dashboard.html" class="text-sm text-navy">← لوحة التحكم</a>
+        </div>
+      <div class="mb-4">
+        <input id="searchBox" type="text" oninput="filterProducts()" placeholder="🔍 ابحث عن منتج بالاسم أو الباركود..." class="w-full p-3 border-2 border-navy rounded-lg text-lg">
+      </div>
+      <div id="productsGrid" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+    </div>
+    <div class="bg-navy text-white p-4 flex flex-col">
+      <h2 class="text-xl font-bold mb-3">الفاتورة الحالية</h2>
+      <div class="mb-3 bg-white/10 p-3 rounded">
+        <div class="flex gap-2 mb-2">
+          <select id="customerSelect" onchange="loadCustomer()" class="flex-1 p-2 rounded text-black text-sm">
+            <option value="">عميل نقدي</option>
+          </select>
+          <button onclick="openAddCustomer()" class="bg-gold text-navy px-3 py-2 rounded text-sm font-bold">+</button>
+        </div>
+        <div id="customerInfo" class="text-xs text-yellow-300 hidden"></div>
+        <input id="customerTaxNumber" type="text" placeholder="الرقم الضريبي - اختياري" class="w-full p-2 rounded text-black text-sm mt-2">
+      </div>
+      <div id="cartItems" class="flex-1 overflow-y-auto mb-3"></div>
+      <div class="border-t border-gray-600 pt-3 space-y-1">
+        <div class="flex justify-between text-sm">
+          <span>المجموع قبل الضريبة:</span>
+          <span id="subtotal">0.00</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span>إجمالي الخصم:</span>
+          <span id="totalDiscount" class="text-yellow-400">0.00</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span>ضريبة القيمة المضافة 15%:</span>
+          <span id="vat">0.00</span>
+        </div>
+        <div class="flex justify-between text-2xl font-black pt-2 border-t border-gray-600">
+          <span>الإجمالي:</span>
+          <span id="total">0.00 ر.س</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mt-3">
+          <button onclick="completeSale('cash')" id="cashBtn" class="w-full bg-gold text-navy py-4 rounded-lg text-lg font-black disabled:bg-gray-500" disabled>💵 بيع نقدي</button>
+          <button onclick="completeSale('credit')" id="creditBtn" class="w-full bg-purple-600 text-white py-4 rounded-lg text-lg font-black disabled:bg-gray-500" disabled>📝 بيع آجل</button>
+        </div>
+        <div id="msg" class="text-center mt-2 text-sm"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="scannerModal" class="modal fixed inset-0 hidden items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold text-navy">امسح الباركود</h3>
+        <button onclick="closeScanner()" class="text-2xl font-bold text-red-600">×</button>
+      </div>
+      <div id="reader"></div>
+      <div id="scanResult" class="text-center mt-3 text-sm font-bold text-green-600"></div>
+    </div>
+  </div>
+
+  <div id="addCustomerModal" class="modal fixed inset-0 hidden items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+      <h3 class="text-xl font-bold text-navy mb-4">إضافة عميل جديد</h3>
+      <div class="space-y-3">
+        <input id="new_c_name" type="text" placeholder="اسم العميل *" class="w-full p-2 border rounded">
+        <input id="new_c_phone" type="text" placeholder="رقم الجوال" class="w-full p-2 border rounded">
+        <input id="new_c_tax" type="text" placeholder="الرقم الضريبي" class="w-full p-2 border rounded">
+      </div>
+      <div class="flex gap-3 mt-6">
+        <button onclick="saveCustomer()" class="flex-1 bg-navy text-white py-2 rounded font-bold">حفظ</button>
+        <button onclick="closeAddCustomer()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded font-bold">إلغاء</button>
+      </div>
+      <div id="addCustomerMsg" class="text-sm mt-2 text-center"></div>
+    </div>
+  </div>
+
+  <div id="invoiceThermal" class="text-black bg-white" style="display:none;">
+    <div class="text-center font-black text-sm" id="inv_t_store"></div>
+    <div class="text-center text-xs">الرقم الضريبي: 300000000000003</div>
+    <div class="text-center text-xs font-bold my-1">فاتورة ضريبية مبسطة</div>
+    <div class="text-xs">رقم: <span id="inv_t_number"></span></div>
+    <div class="text-xs">التاريخ: <span id="inv_t_date"></span></div>
+    <div class="text-xs">الوقت: <span id="inv_t_time"></span></div>
+    <div class="text-xs" id="inv_t_payment_type"></div>
+    <div class="text-xs" id="inv_t_customer_row">العميل: <span id="inv_t_customer"></span></div>
+    <div class="text-xs" id="inv_t_customer_tax_row">الرقم الضريبي: <span id="inv_t_customer_tax"></span></div>
+    <div class="border-t border-b border-dashed border-black my-1 py-1">
+      <div id="inv_t_items" class="text-xs"></div>
+    </div>
+    <div class="text-xs">
+      <div class="flex justify-between"><span>قبل الضريبة</span><span id="inv_t_subtotal"></span></div>
+      <div class="flex justify-between"><span>الخصم</span><span id="inv_t_discount"></span></div>
+      <div class="flex justify-between"><span>ضريبة 15%</span><span id="inv_t_vat"></span></div>
+      <div class="flex justify-between font-bold border-t border-dashed border-black mt-1 pt-1"><span>الإجمالي</span><span id="inv_t_total"></span></div>
+    </div>
+    <div class="text-center mt-2">
+      <div id="inv_t_qr" style="display: inline-block;"></div>
+    </div>
+    <div class="text-center text-xs mt-1">شكراً لزيارتكم - العَبَرات</div>
+  </div>
+
+  <div id="invoiceA4" style="display:none;">
+    <div class="border-b-4 border-navy pb-4 mb-6">
+      <div class="flex justify-between items-start">
+        <div>
+          <h1 class="text-3xl font-black text-navy" id="inv_a4_store"></h1>
+          <p class="text-sm text-gray-600 mt-1">نظام نقاط البيع العَبَرات</p>
+          <p class="text-xs text-gray-500 mt-2">الرقم الضريبي: 300000000000003</p>
+        </div>
+        <div class="text-left">
+          <h2 class="text-2xl font-bold text-gray-700">فاتورة ضريبية مبسطة</h2>
+          <p class="text-sm mt-3">رقم الفاتورة: <span class="font-bold" id="inv_a4_number"></span></p>
+          <p class="text-sm">التاريخ: <span id="inv_a4_date"></span></p>
+          <p class="text-sm">الوقت: <span id="inv_a4_time"></span></p>
+          <p class="text-sm font-bold text-purple-600" id="inv_a4_payment_type"></p>
+        </div>
+      </div>
+    </div>
+    <div class="mb-6" id="inv_a4_customer_box">
+      <h3 class="font-bold text-gray-700 mb-2">بيانات العميل:</h3>
+      <p class="text-sm">الاسم: <span id="inv_a4_customer"></span></p>
+      <p class="text-sm" id="inv_a4_customer_tax_row">الرقم الضريبي: <span id="inv_a4_customer_tax"></span></p>
+    </div>
+    <table class="w-full mb-6 border">
+      <thead>
+        <tr class="bg-navy text-white">
+          <th class="p-2 text-right text-sm border">م</th>
+          <th class="p-2 text-right text-sm border">الصنف</th>
+          <th class="p-2 text-center text-sm border">الكمية</th>
+          <th class="p-2 text-center text-sm border">السعر قبل الضريبة</th>
+          <th class="p-2 text-center text-sm border">الخصم</th>
+          <th class="p-2 text-center text-sm border">ضريبة 15%</th>
+          <th class="p-2 text-left text-sm border">الإجمالي</th>
+        </tr>
+      </thead>
+      <tbody id="inv_a4_items"></tbody>
+    </table>
+    <div class="flex justify-between items-end">
+      <div>
+        <div id="inv_a4_qr" class="border p-2"></div>
+        <p class="text-xs text-gray-500 mt-1 text-center">امسح للتحقق</p>
+      </div>
+      <div class="w-72">
+        <div class="flex justify-between py-1 text-sm border-b">
+          <span>المجموع قبل الضريبة:</span>
+          <span id="inv_a4_subtotal"></span>
+        </div>
+        <div class="flex justify-between py-1 text-sm border-b">
+          <span>إجمالي الخصم:</span>
+          <span id="inv_a4_discount"></span>
+        </div>
+        <div class="flex justify-between py-1 text-sm border-b">
+          <span>ضريبة القيمة المضافة 15%:</span>
+          <span id="inv_a4_vat"></span>
+        </div>
+        <div class="flex justify-between py-3 text-xl font-black bg-gray-100 px-2">
+          <span>الإجمالي شامل الضريبة:</span>
+          <span id="inv_a4_total"></span>
+        </div>
+      </div>
+    <div class="mt-12 text-center text-xs text-gray-500 border-t pt-4">
+      <p class="font-bold">هذه الفاتورة متوافقة مع متطلبات هيئة الزكاة والضريبة والجمارك</p>
+      <p class="mt-1">العَبَرات - alabarat.com</p>
+    </div>
+  </div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+  const supabase = createClient('https://eeiegignudoedrlkuaqn.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlaWVnaWdudWRvZWRybGt1YXFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODUwNzMsImV4cCI6MjA5MzA2MTA3M30.gtqh1KbGmXZ9VBkmpFCYtJetn1ZXPHcp5oX9sENBb2Q')
+
+  let currentStore = null, cart = [], allProducts = [], filteredProducts = [], allCustomers = [], lastSale = null;
+  let html5QrCode = null;
+  const VAT_RATE = 0.15;
+  const TAX_NUMBER = '300000000000003';
+
+  async function init() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { window.location.href = 'alabarat.html'; return; }
+      const { data: store, error: storeError } = await supabase.from('stores').select().eq('user_id', user.id).single();
+      if (storeError) throw storeError;
+      currentStore = store;
+      document.getElementById('storeName').textContent = 'كاشير: ' + store.store_name;
+      await Promise.all([loadProducts(), loadCustomers()]);
+    } catch (error) {
+      console.error('خطأ في التهيئة:', error);
+      document.getElementById('msg').textContent = 'خطأ: ' + error.message;
+    }
+  }
+
+  async function loadProducts() {
+    const { data: products, error } = await supabase.from('products').select().eq('store_id', currentStore.id);
+    if(error) {
+      console.error('خطأ تحميل المنتجات:', error);
+      document.getElementById('productsGrid').innerHTML = '<p class="text-red-500 col-span-full text-center py-8">خطأ في تحميل المنتجات</p>';
+      return;
+    }
+    allProducts = products || [];
+    filteredProducts = [...allProducts];
+    renderProducts();
+  }
+
+  async function loadCustomers() {
+    try {
+      const { data: customers, error } = await supabase.from('customers').select().eq('store_id', currentStore.id).order('name');
+      if (error) throw error;
+      allCustomers = customers || [];
+      const select = document.getElementById('customerSelect');
+      select.innerHTML = '<option value="">عميل نقدي</option>';
+      allCustomers.forEach(function(c) {
+        const balance = Number(c.balance) || 0;
+        const balanceText = balance < 0? 'عليه ' + Math.abs(balance).toFixed(2) : balance > 0? 'له ' + balance.toFixed(2) : 'رصيد صفر';
+        select.innerHTML += '<option value="' + c.id + '">' + c.name + ' - ' + balanceText + '</option>';
+      });
+    } catch (error) {
+      console.error('خطأ تحميل العملاء:', error);
+    }
+  }
+
+  window.loadCustomer = function() {
+    const customerId = document.getElementById('customerSelect').value;
+    const infoDiv = document.getElementById('customerInfo');
+    const taxInput = document.getElementById('customerTaxNumber');
+    if (!customerId) {
+      infoDiv.classList.add('hidden');
+      taxInput.value = '';
+      return;
+    }
+    const customer = allCustomers.find(function(c) { return c.id == customerId; });
+    if (customer) {
+      taxInput.value = customer.tax_number || '';
+      const balance = Number(customer.balance) || 0;
+      const balanceText = balance < 0? 'مديون: ' + Math.abs(balance).toFixed(2) + ' ر.س' : balance > 0? 'دائن: ' + balance.toFixed(2) + ' ر.س' : 'لا يوجد رصيد';
+      infoDiv.textContent = balanceText;
+      infoDiv.classList.remove('hidden');
+    }
+  }
+
+  function renderProducts() {
+    const grid = document.getElementById('productsGrid');
+    grid.innerHTML = '';
+    if(filteredProducts.length === 0) {
+      grid.innerHTML = '<p class="text-gray-500 col-span-full text-center py-8">لا توجد منتجات</p>';
+      return;
+    }
+    filteredProducts.forEach(function(p) {
+      const stockQty = Number(p.stock_qty) || 0;
+      const price = Number(p.selling_price) || 0;
+      const stockText = stockQty > 0? 'متوفر: ' + stockQty : 'نفذ المخزون';
+      const stockClass = stockQty > 0? 'text-green-600' : 'text-red-600';
+      grid.innerHTML += '<button onclick="addToCart(' + p.id + ')" class="bg-gray-100 p-3 rounded-lg text-center active:bg-gold text-navy hover:bg-gray-200 transition"><div class="font-bold text-sm">' + p.name + '</div><div class="text-xl font-black">' + price.toFixed(2) + ' ر.س</div><div class="text-xs ' + stockClass + '">' + stockText + '</div></button>';
+    });
+  }
+
+  window.filterProducts = function() {
+    const query = document.getElementById('searchBox').value.toLowerCase().trim();
+    if (!query) {
+      filteredProducts = [...allProducts];
+    } else {
+      filteredProducts = allProducts.filter(function(p) {
+        return p.name.toLowerCase().includes(query) || (p.barcode && p.barcode.toLowerCase().includes(query));
+      });
+    }
+    renderProducts();
+  }
+
+  window.addToCart = function(id) {
+    const p = allProducts.find(function(x) { return x.id === id; });
+    const stockQty = Number(p.stock_qty) || 0;
+    if (stockQty <= 0) {
+      document.getElementById('msg').textContent = 'المخزون نفذ لهذا المنتج';
+      document.getElementById('msg').className = 'text-center mt-2 text-sm text-red-400';
+      setTimeout(function() { document.getElementById('msg').textContent = ''; }, 2000);
+      return;
+    }
+    const ex = cart.find(function(x) { return x.id === id; });
+    if (ex) {
+      if (ex.qty < stockQty) ex.qty++;
+    } else {
+      cart.push({
+        id: p.id,
+        name: p.name,
+        price: Number(p.selling_price) || 0,
+        cost_price: Number(p.cost_price) || 0,
+        qty: 1,
+        discount: 0,
+        edited_price: Number(p.selling_price) || 0
+      });
+    }
+    renderCart();
+  }
+
+  function renderCart() {
+    const cartDiv = document.getElementById('cartItems');
+    let subtotalExclVat = 0, totalDiscount = 0;
+    cartDiv.innerHTML = '';
+    cart.forEach(function(item, idx) {
+      const price = Number(item.edited_price) || 0;
+      const discount = Number(item.discount) || 0;
+      const qty = Number(item.qty) || 1;
+      const priceAfterDiscount = price - discount;
+      const priceExclVat = priceAfterDiscount / 1.15;
+      const lineTotal = priceAfterDiscount * qty;
+      subtotalExclVat += priceExclVat * qty;
+      totalDiscount += discount * qty;
+      cartDiv.innerHTML += `
+        <div class="mb-2 bg-white/10 p-2 rounded text-sm">
+          <div class="font-bold mb-1">${item.name}</div>
+          <div class="grid grid-cols-3 gap-1 text-xs mb-1">
+            <div>السعر:<input type="number" step="0.01" value="${price.toFixed(2)}" onchange="updatePrice(${idx}, this.value)" class="w-full p-1 rounded text-black text-xs"></div>
+            <div>الكمية:<input type="number" value="${qty}" onchange="updateQty(${idx}, this.value)" class="w-full p-1 rounded text-black text-xs"></div>
+            <div>خصم:<input type="number" step="0.01" value="${discount.toFixed(2)}" onchange="updateDiscount(${idx}, this.value)" class="w-full p-1 rounded text-black text-xs"></div>
+          </div>
+          <div class="flex justify-between items-center">
+            <button onclick="removeItem(${idx})" class="text-red-400 text-xs">حذف</button>
+            <div class="font-bold">${lineTotal.toFixed(2)} ر.س</div>
+          </div>
+        </div>`;
+    });
+    const vat = subtotalExclVat * VAT_RATE;
+    const total = subtotalExclVat + vat;
+    document.getElementById('subtotal').textContent = subtotalExclVat.toFixed(2);
+    document.getElementById('totalDiscount').textContent = totalDiscount.toFixed(2);
+    document.getElementById('vat').textContent = vat.toFixed(2);
+    document.getElementById('total').textContent = total.toFixed(2) + ' ر.س';
+    const hasItems = cart.length > 0;
+    document.getElementById('cashBtn').disabled =!hasItems;
+    document.getElementById('creditBtn').disabled =!hasItems;
+  }
+
+  window.updatePrice = function(idx, val) {
+    const newPrice = Number(val) || 0;
+    if (newPrice >= 0) { cart[idx].edited_price = newPrice; renderCart(); }
+  }
+
+  window.updateQty = function(idx, val) {
+    const newQty = Number(val) || 1;
+    const maxStock = Number(allProducts.find(function(p) { return p.id === cart[idx].id; }).stock_qty) || 0;
+    if (newQty > 0 && newQty <= maxStock) { cart[idx].qty = newQty; renderCart(); }
+  }
+
+  window.updateDiscount = function(idx, val) {
+    const newDiscount = Number(val) || 0;
+    const price = Number(cart[idx].edited_price) || 0;
+    if (newDiscount >= 0 && newDiscount <= price) { cart[idx].discount = newDiscount; renderCart(); }
+  }
+
+  window.removeItem = function(idx) { cart.splice(idx, 1); renderCart(); }
+
+  window.completeSale = async function(paymentType) {
+    if (cart.length === 0) return alert('السلة فارغة');
+    if (!currentStore) return alert('خطأ في تحميل المتجر');
+
+    const customerId = document.getElementById('customerSelect').value || null;
+    if (paymentType === 'credit' &&!customerId) {
+      document.getElementById('msg').textContent = 'اختر عميل للبيع الآجل';
+      document.getElementById('msg').className = 'text-center mt-2 text-sm text-red-400';
+      return;
+    }
+
+    const msg = document.getElementById('msg');
+    document.getElementById('cashBtn').disabled = true;
+    document.getElementById('creditBtn').disabled = true;
+    msg.textContent = 'جاري الحفظ...';
+    msg.className = 'text-center mt-2 text-sm text-yellow-400';
+
+    const subtotal = cart.reduce(function(sum, item) {
+      const price = Number(item.edited_price) || 0;
+      const discount = Number(item.discount) || 0;
+      const qty = Number(item.qty) || 1;
+      return sum + (price - discount) * qty / 1.15;
+    }, 0);
+    const vat = subtotal * VAT_RATE;
+    const total = subtotal + vat;
+    const customerTaxNumber = document.getElementById('customerTaxNumber').value || null;
+
+    const { data: sale, error: saleError } = await supabase.from('sales').insert({
+      store_id: currentStore.id,
+      customer_id: customerId,
+      customer_name: customerId? allCustomers.find(function(c) { return c.id == customerId; })?.name : null,
+      customer_phone: customerId? allCustomers.find(function(c) { return c.id == customerId; })?.phone : null,
+      customer_tax_number: customerTaxNumber,
+      payment_type: paymentType,
+      subtotal: subtotal,
+      vat_amount: vat,
+      total_amount: total
+    }).select().single();
+
+    if (saleError) {
+      msg.textContent = 'خطأ: ' + saleError.message;
+      msg.className = 'text-center mt-2 text-sm text-red-400';
+      document.getElementById('cashBtn').disabled = false;
+      document.getElementById('creditBtn').disabled = false;
+      return;
+    }
+
+    for (var i = 0; i < cart.length; i++) {
+      var item = cart[i];
+      const price = Number(item.edited_price) || 0;
+      const discount = Number(item.discount) || 0;
+      const qty = Number(item.qty) || 1;
+      const cost = Number(item.cost_price) || 0;
+      const priceAfterDiscount = price - discount;
+
+      await supabase.from('sale_items').insert({
+        sale_id: sale.id,
+        product_id: item.id,
+        qty: qty,
+        unit_price: price,
+        cost_price: cost,
+        total: priceAfterDiscount * qty
+      });
+
+      const product = allProducts.find(function(p) { return p.id === item.id; });
+      const currentStock = Number(product.stock_qty) || 0;
+      const newStock = currentStock - qty;
+      await supabase.from('products').update({ stock_qty: newStock }).eq('id', item.id);
+    }
+
+    if (paymentType === 'credit' && customerId) {
+      const customer = allCustomers.find(function(c) { return c.id == customerId; });
+      const currentBalance = Number(customer.balance) || 0;
+      const newBalance = currentBalance - total;
+      await supabase.from('customers').update({ balance: newBalance }).eq('id', customerId);
+    }
+
+    lastSale = {
+      id: sale.id,
+      invoice_number: sale.id,
+      total_amount: total,
+      vat_amount: vat,
+      subtotal: subtotal,
+      discount: cart.reduce(function(s, i) {
+        const d = Number(i.discount) || 0;
+        const q = Number(i.qty) || 1;
+        return s + d * q;
+      }, 0),
+      payment_type: paymentType,
+      customer_name: customerId? allCustomers.find(function(c) { return c.id == customerId; })?.name : null,
+      customer_tax_number: customerTaxNumber,
+      items: [...cart],
+      date: new Date()
+    };
+
+    document.getElementById('printBtn').disabled = false;
+    document.getElementById('pdfBtn').disabled = false;
+    msg.textContent = paymentType === 'credit'? 'تم البيع آجل ✅' : 'تم البيع نقدي ✅';
+    msg.className = 'text-center mt-2 text-sm text-green-400';
+
+    cart = [];
+    document.getElementById('customerSelect').value = '';
+    document.getElementById('customerTaxNumber').value = '';
+    document.getElementById('customerInfo').classList.add('hidden');
+    renderCart();
+    await Promise.all([loadProducts(), loadCustomers()]);
+    setTimeout(function() { msg.textContent = ''; }, 3000);
+  }
+
+  window.openScanner = function() {
+    document.getElementById('scannerModal').classList.remove('hidden');
+    document.getElementById('scannerModal').classList.add('flex');
+    document.getElementById('scanResult').textContent = '';
+    html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      function(decodedText) {
+        const product = allProducts.find(function(p) { return p.barcode === decodedText || p.id.toString() === decodedText; });
+        if (product) {
+          addToCart(product.id);
+          document.getElementById('scanResult').textContent = '✅ تم إضافة: ' + product.name;
+          setTimeout(function() { closeScanner(); }, 1500);
+        } else {
+          document.getElementById('scanResult').textContent = '❌ المنتج غير موجود';
+        }
+      },
+      function(errorMessage) {}
+    ).catch(function(err) {
+      document.getElementById('scanResult').textContent = 'خطأ في تشغيل الكاميرا';
+    });
+  }
+
+  window.closeScanner = function() {
+    if (html5QrCode) {
+      html5QrCode.stop().then(function() {
+        html5QrCode.clear();
+        html5QrCode = null;
+      }).catch(function(err) { console.log(err); });
+    }
+    document.getElementById('scannerModal').classList.add('hidden');
+    document.getElementById('scannerModal').classList.remove('flex');
+  }
+
+  window.openAddCustomer = function() {
+    document.getElementById('addCustomerModal').classList.remove('hidden');
+    document.getElementById('addCustomerModal').classList.add('flex');
+    document.getElementById('addCustomerMsg').textContent = '';
+  }
+
+  window.closeAddCustomer = function() {
+    document.getElementById('addCustomerModal').classList.add('hidden');
+    document.getElementById('addCustomerModal').classList.remove('flex');
+  }
+
+  window.saveCustomer = async function() {
+    const name = document.getElementById('new_c_name').value.trim();
+    const phone = document.getElementById('new_c_phone').value.trim();
+    const tax = document.getElementById('new_c_tax').value.trim();
+    const msg = document.getElementById('addCustomerMsg');
+    if (!name) {
+      msg.textContent = 'اسم العميل مطلوب';
+      msg.className = 'text-sm mt-2 text-center text-red-600';
+      return;
+    }
+    const { error } = await supabase.from('customers').insert({
+      store_id: currentStore.id,
+      name: name,
+      phone: phone || null,
+      tax_number: tax || null,
+      balance: 0
+    });
+    if (error) {
+      msg.textContent = 'خطأ: ' + error.message;
+      msg.className = 'text-sm mt-2 text-center text-red-600';
+    } else {
+      msg.textContent = 'تمت الإضافة ✅';
+      msg.className = 'text-sm mt-2 text-center text-green-600';
+      setTimeout(function() {
+        closeAddCustomer();
+        loadCustomers();
+        document.getElementById('new_c_name').value = '';
+        document.getElementById('new_c_phone').value = '';
+        document.getElementById('new_c_tax').value = '';
+      }, 1000);
+    }
+  }
+
+  function generateZATCAQR(storeName, taxNumber, timestamp, total, vat) {
+    function toTLV(tag, value) {
+      const tagBytes = [tag];
+      const valueBytes = new TextEncoder().encode(value);
+      const lengthBytes = [valueBytes.length];
+      return new Uint8Array([...tagBytes,...lengthBytes,...valueBytes]);
+    }
+    const seller = toTLV(1, storeName);
+    const tax = toTLV(2, taxNumber);
+    const date = toTLV(3, timestamp);
+    const totalAmount = toTLV(4, total.toFixed(2));
+    const vatAmount = toTLV(5, vat.toFixed(2));
+    const combined = new Uint8Array(seller.length + tax.length + date.length + totalAmount.length + vatAmount.length);
+    combined.set(seller, 0);
+    combined.set(tax, seller.length);
+    combined.set(date, seller.length + tax.length);
+    combined.set(totalAmount, seller.length + tax.length + date.length);
+    combined.set(vatAmount, seller.length + tax.length + date.length + totalAmount.length);
+    return btoa(String.fromCharCode.apply(null, combined));
+  }
+
+  function prepareInvoiceData() {
+    const dateStr = lastSale.date.toLocaleDateString('ar-SA');
+    const timeStr = lastSale.date.toLocaleTimeString('ar-SA');
+    const isoDate = lastSale.date.toISOString();
+    const qrData = generateZATCAQR(currentStore.store_name, TAX_NUMBER, isoDate, lastSale.total_amount, lastSale.vat_amount);
+
+    document.getElementById('inv_t_store').textContent = currentStore.store_name;
+    document.getElementById('inv_t_number').textContent = lastSale.invoice_number;
+    document.getElementById('inv_t_date').textContent = dateStr;
+    document.getElementById('inv_t_time').textContent = timeStr;
+    document.getElementById('inv_t_payment_type').textContent = lastSale.payment_type === 'credit'? '💳 بيع آجل' : '💵 بيع نقدي';
+    document.getElementById('inv_t_subtotal').textContent = lastSale.subtotal.toFixed(2);
+    document.getElementById('inv_t_discount').textContent = lastSale.discount.toFixed(2);
+    document.getElementById('inv_t_vat').textContent = lastSale.vat_amount.toFixed(2);
+    document.getElementById('inv_t_total').textContent =
+    document.getElementById('inv_t_total').textContent = lastSale.total_amount.toFixed(2) + ' ر.س';
+    document.getElementById('inv_t_items').innerHTML = lastSale.items.map(function(i) {
+      const price = Number(i.edited_price) || 0;
+      const discount = Number(i.discount) || 0;
+      const qty = Number(i.qty) || 1;
+      const priceAfterDiscount = price - discount;
+      return '<div class="flex justify-between"><span>' + i.name + ' x' + qty + '</span><span>' + (priceAfterDiscount * qty).toFixed(2) + '</span></div>';
+    }).join('');
+
+    if(lastSale.customer_name) {
+      document.getElementById('inv_t_customer_row').style.display = 'block';
+      document.getElementById('inv_t_customer').textContent = lastSale.customer_name;
+    } else {
+      document.getElementById('inv_t_customer_row').style.display = 'none';
+    }
+    if(lastSale.customer_tax_number) {
+      document.getElementById('inv_t_customer_tax_row').style.display = 'block';
+      document.getElementById('inv_t_customer_tax').textContent = lastSale.customer_tax_number;
+    } else {
+      document.getElementById('inv_t_customer_tax_row').style.display = 'none';
+    }
+    document.getElementById('inv_t_qr').innerHTML = '';
+    const qrThermal = qrcode(0, 'M');
+    qrThermal.addData(qrData);
+    qrThermal.make();
+    document.getElementById('inv_t_qr').innerHTML = qrThermal.createImgTag(3);
+
+    // A4
+    document.getElementById('inv_a4_store').textContent = currentStore.store_name;
+    document.getElementById('inv_a4_number').textContent = lastSale.invoice_number;
+    document.getElementById('inv_a4_date').textContent = dateStr;
+    document.getElementById('inv_a4_time').textContent = timeStr;
+    document.getElementById('inv_a4_payment_type').textContent = lastSale.payment_type === 'credit'? '💳 بيع آجل' : '💵 بيع نقدي';
+    document.getElementById('inv_a4_subtotal').textContent = lastSale.subtotal.toFixed(2) + ' ر.س';
+    document.getElementById('inv_a4_discount').textContent = lastSale.discount.toFixed(2) + ' ر.س';
+    document.getElementById('inv_a4_vat').textContent = lastSale.vat_amount.toFixed(2) + ' ر.س';
+    document.getElementById('inv_a4_total').textContent = lastSale.total_amount.toFixed(2) + ' ر.س';
+    document.getElementById('inv_a4_items').innerHTML = lastSale.items.map(function(i, idx) {
+      const price = Number(i.edited_price) || 0;
+      const discount = Number(i.discount) || 0;
+      const qty = Number(i.qty) || 1;
+      const priceAfterDiscount = price - discount;
+      const priceExclVat = priceAfterDiscount / 1.15;
+      const vatAmount = priceExclVat * 0.15 * qty;
+      return '<tr class="border-b"><td class="p-2 text-right border">' + (idx + 1) + '</td><td class="p-2 text-right border">' + i.name + '</td><td class="p-2 text-center border">' + qty + '</td><td class="p-2 text-center border">' + priceExclVat.toFixed(2) + '</td><td class="p-2 text-center border">' + discount.toFixed(2) + '</td><td class="p-2 text-center border">' + vatAmount.toFixed(2) + '</td><td class="p-2 text-left border">' + (priceAfterDiscount * qty).toFixed(2) + ' ر.س</td></tr>';
+    }).join('');
+
+    if(lastSale.customer_name) {
+      document.getElementById('inv_a4_customer_box').style.display = 'block';
+      document.getElementById('inv_a4_customer').textContent = lastSale.customer_name;
+      if(lastSale.customer_tax_number) {
+        document.getElementById('inv_a4_customer_tax_row').style.display = 'block';
+        document.getElementById('inv_a4_customer_tax').textContent = lastSale.customer_tax_number;
+      } else {
+        document.getElementById('inv_a4_customer_tax_row').style.display = 'none';
+      }
+    } else {
+      document.getElementById('inv_a4_customer_box').style.display = 'none';
+    }
+    document.getElementById('inv_a4_qr').innerHTML = '';
+    const qrA4 = qrcode(0, 'M');
+    qrA4.addData(qrData);
+    qrA4.make();
+    document.getElementById('inv_a4_qr').innerHTML = qrA4.createImgTag(4);
+  }
+
+  window.printLastInvoice = function() {
+    if (!lastSale) return;
+    prepareInvoiceData();
+    setTimeout(function() { window.print(); }, 100);
+  }
+
+  window.downloadPDF = async function() {
+    if (!lastSale) return;
+    prepareInvoiceData();
+    const { jsPDF } = window.jspdf;
+    const invoice = document.getElementById('invoiceA4');
+    invoice.style.display = 'block';
+    await new Promise(function(resolve) { setTimeout(resolve, 500); });
+    const canvas = await html2canvas(invoice, { scale: 2, useCORS: true, logging: false });
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const imgWidth = 210;
+    const imgHeight = canvas.height * imgWidth / canvas.width;
+    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+    pdf.save('فاتورة-' + lastSale.invoice_number + '.pdf');
+    invoice.style.display = 'none';
+  }
+
+  init();
+</script>
+</body>
+</html>
