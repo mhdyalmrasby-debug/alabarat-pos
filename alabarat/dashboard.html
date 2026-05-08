@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة التحكم - العَبَرات</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Cairo', sans-serif; }
+ .bg-navy { background-color: #0B2545; }
+ .bg-gold { background-color: #F5B301; }
+ .text-navy { color: #0B2545; }
+ .text-gold { color: #F5B301; }
+ .card:hover { transform: translateY(-5px); }
+ .modal { background-color: rgba(0,0,0,0.7); }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <!-- الهيدر -->
+  <div class="bg-navy text-white p-4 shadow-lg">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <div class="flex items-center gap-4">
+        <img id="storeLogoImg" src="" alt="" class="w-12 h-12 rounded-full bg-white hidden">
+        <div>
+          <h1 class="text-2xl font-black">العَبَرات</h1>
+          <p id="storeName" class="text-sm text-gold">جاري التحميل...</p>
+        </div>
+      </div>
+      <div class="flex gap-3 items-center">
+        <button onclick="openStoreModal()" class="bg-gold text-navy px-4 py-2 rounded-lg font-bold text-sm">⚙️ بيانات المتجر</button>
+        <button onclick="openPasswordModal()" class="bg-white text-navy px-4 py-2 rounded-lg font-bold text-sm">🔒 كلمة السر</button>
+        <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm">تسجيل خروج</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- المحتوى -->
+  <div class="max-w-7xl mx-auto p-6">
+    <div id="errorBox" class="hidden bg-red-100 border-2 border-red-400 text-red-700 px-4 py-4 rounded-lg mb-6 text-center font-bold"></div>
+    <div id="successBox" class="hidden bg-green-100 border-2 border-green-400 text-green-700 px-4 py-4 rounded-lg mb-6 text-center font-bold"></div>
+
+    <!-- الإحصائيات السريعة -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white p-5 rounded-xl shadow">
+        <div class="text-gray-500 text-sm">مبيعات اليوم</div>
+        <div id="todaySales" class="text-3xl font-black text-navy">0.00 ر.س</div>
+      </div>
+      <div class="bg-white p-5 rounded-xl shadow relative">
+        <div class="text-gray-500 text-sm">طلبات جديدة</div>
+        <div id="newOrdersCount" class="text-3xl font-black text-green-600">0</div>
+        <span id="newOrdersBadge" class="hidden absolute -top-2 -left-2 bg-red-500 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-black">0</span>
+      </div>
+      <div class="bg-white p-5 rounded-xl shadow">
+        <div class="text-gray-500 text-sm">عدد المنتجات</div>
+        <div id="productCount" class="text-3xl font-black text-navy">0</div>
+      </div>
+      <div class="bg-white p-5 rounded-xl shadow">
+        <div class="text-gray-500 text-sm">قيمة المخزون</div>
+        <div id="stockValue" class="text-3xl font-black text-blue-600">0.00 ر.س</div>
+      </div>
+    </div>
+
+    <!-- القائمة الرئيسية -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <a href="pos.html" class="card bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-xl shadow-lg transition relative">
+        <div class="text-4xl mb-2">🛒</div>
+        <div class="text-xl font-bold">الكاشير</div>
+        <div class="text-sm opacity-80">نقطة البيع والطلبات</div>
+        <span id="cashierBadge" class="hidden absolute -top-2 -left-2 bg-red-500 text-white text-xs w-7 h-7 rounded-full flex items-center justify-center font-black">0</span>
+      </a>
+
+      <a href="products.html" class="card bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-xl shadow-lg transition">
+        <div class="text-4xl mb-2">📦</div>
+        <div class="text-xl font-bold">المنتجات</div>
+        <div class="text-sm opacity-80">إدارة المخزون</div>
+      </a>
+
+      <a id="shopLink" target="_blank" class="card bg-gradient-to-br from-yellow-500 to-yellow-600 text-navy p-6 rounded-xl shadow-lg transition">
+        <div class="text-4xl mb-2">🌐</div>
+        <div class="text-xl font-bold">متجري</div>
+        <div class="text-sm opacity-80">معاينة للزبائن</div>
+      </a>
+
+      <a href="reports.html" class="card bg-gradient-to-br from-pink-500 to-pink-600 text-white p-6 rounded-xl shadow-lg transition">
+        <div class="text-4xl mb-2">📊</div>
+        <div class="text-xl font-bold">التقارير</div>
+        <div class="text-sm opacity-80">الأرباح والمبيعات</div>
+      </a>
+
+      <a href="purchases.html" class="card bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-xl shadow-lg transition">
+        <div class="text-4xl mb-2">📥</div>
+        <div class="text-xl font-bold">المشتريات</div>
+        <div class="text-sm opacity-80">فواتير الموردين</div>
+      </a>
+
+      <a href="customers.html" class="card bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-xl shadow-lg transition">
+        <div class="text-4xl mb-2">👥</div>
+        <div class="text-xl font-bold">العملاء</div>
+        <div class="text-sm opacity-80">الآجل والديون</div>
+      </a>
+
+      <a href="suppliers.html" class="card bg-gradient-to-br from-teal-500 to-teal-600 text-white p-6 rounded-xl shadow-lg transition">
+        <div class="text-4xl mb-2">🏭</div>
+        <div class="text-xl font-bold">الموردين</div>
+        <div class="text-sm opacity-80">إدارة الموردين</div>
+      </a>
+
+      <a href="directs.html" class="card bg-gradient-to-br from-indigo-500 to-indigo-600 text-white p-6 rounded-xl shadow-lg transition">
+        <div class="text-4xl mb-2">💸</div>
+        <div class="text-xl font-bold">المصاريف</div>
+        <div class="text-sm opacity-80">المصاريف المباشرة</div>
+      </a>
+    </div>
+  </div>
+
+  <!-- مودال بيانات المتجر -->
+  <div id="storeModal" class="modal fixed inset-0 hidden items-center justify-center z-50">
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-2xl max-h-screen overflow-y-auto">
+      <div class="flex justify-between items-center mb-6 border-b-2 border-gold pb-3">
+        <h3 class="text-2xl font-black text-navy">بيانات المتجر</h3>
+        <button onclick="closeStoreModal()" class="text-2xl font-bold text-red-600">×</button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-gray-700 font-bold mb-2">اسم المتجر *</label>
+          <input id="editStoreName" type="text" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
+        </div>
+
+        <div>
+          <label class="block text-gray-700 font-bold mb-2">رقم الجوال *</label>
+          <input id="editStorePhone" type="tel" placeholder="05xxxxxxxx" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
+        </div>
+
+        <div>
+          <label class="block text-gray-700 font-bold mb-2">عنوان المتجر</label>
+          <textarea id="editStoreAddress" rows="2" placeholder="الحي، الشارع، المدينة" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-gray-700 font-bold mb-2">رابط الشعار</label>
+          <input id="editStoreLogo" type="url" placeholder="https://example.com/logo.png" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
+          <p class="text-xs text-gray-500 mt-1">ارفع الصورة على imgur.com أو أي موقع وانسخ الرابط</p>
+        </div>
+
+        <button onclick="updateStore()" class="w-full bg-navy text-white p-3 rounded-lg font-bold hover:bg-blue-900">
+          💾 حفظ التعديلات
+        </button>
+        <div id="storeMsg" class="text-center text-sm font-bold"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- مودال تغيير كلمة السر -->
+  <div id="passwordModal" class="modal fixed inset-0 hidden items-center justify-center z-50">
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold text-navy">تغيير كلمة السر</h3>
+        <button onclick="closePasswordModal()" class="text-2xl font-bold text-red-600">×</button>
+      </div>
+      <input id="currentPassword" type="password" placeholder="كلمة السر الحالية" class="w-full p-3 mb-3 border-2 rounded-lg">
+      <input id="newPassword" type="password" placeholder="كلمة السر الجديدة" class="w-full p-3 mb-3 border-2 rounded-lg">
+      <input id="confirmPassword" type="password" placeholder="تأكيد كلمة السر" class="w-full p-3 mb-4 border-2 rounded-lg">
+      <button onclick="changePassword()" class="w-full bg-navy text-white p-3 rounded-lg font-bold">تحديث</button>
+      <div id="passwordMsg" class="text-center mt-3 text-sm font-bold"></div>
+    </div>
+  </div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+  const supabase = createClient('https://eeiegignudoedrlkuaqn.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlaWVnaWdudWRvZWRybGt1YXFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODUwNzMsImV4cCI6MjA5MzA2MTA3M30.gtqh1KbGmXZ9VBkmpFCYtJetn1ZXPHcp5oX9sENBb2Q')
+
+  let currentStore = null;
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = msg;
+    box.classList.remove('hidden');
+    setTimeout(() => box.classList.add('hidden'), 4000);
+  }
+
+  function showSuccess(msg) {
+    const box = document.getElementById('successBox');
+    box.textContent = msg;
+    box.classList.remove('hidden');
+    setTimeout(() => box.classList.add('hidden'), 3000);
+  }
+
+  async function init() {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error ||!user) {
+      window.location.href = 'login.html';
+      return;
+    }
+
+    const { data: store } = await supabase.from('stores').select('*').eq('user_id', user.id).single();
+    if (!store) {
+      showError('ما لقيت متجر. سجل خروج وادخل من جديد');
+      return;
+    }
+
+    currentStore = store;
+    document.getElementById('storeName').textContent = store.store_name;
+    document.getElementById('shopLink').href = `shop.html?store=${store.id}`;
+
+    if (store.logo_url) {
+      const logoImg = document.getElementById('storeLogoImg');
+      logoImg.src = store.logo_url;
+      logoImg.classList.remove('hidden');
+    }
+
+    await loadStats();
+    subscribeToNewOrders();
+  }
+
+  function subscribeToNewOrders() {
+    supabase
+   .channel('dashboard-orders')
+   .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'orders',
+        filter: `store_id=eq.${currentStore.id}`
+      }, () => {
+        loadStats();
+      })
+   .subscribe();
+  }
+
+  async function loadStats() {
+    // مبيعات اليوم
+    const today = new Date().toISOString().split('T')[0];
+    const { data: sales } = await supabase.from('sales')
+   .select('total_amount')
+   .eq('store_id', currentStore.id)
+   .gte('created_at', today);
+
+    const todaySales = sales?.reduce((sum, s) => sum + Number(s.total_amount), 0) || 0;
+    document.getElementById('todaySales').textContent = todaySales.toFixed(2) + ' ر.س';
+
+    // طلبات جديدة
+    const { count: newOrders } = await supabase
+   .from('orders')
+   .select('*', { count: 'exact', head: true })
+   .eq('store_id', currentStore.id)
+   .eq('status', 'جديد');
+
+    document.getElementById('newOrdersCount').textContent = newOrders || 0;
+    const badge = document.getElementById('newOrdersBadge');
+    const cashierBadge = document.getElementById('cashierBadge');
+    if (newOrders > 0) {
+      badge.textContent = newOrders;
+      badge.classList.remove('hidden');
+      cashierBadge.textContent = newOrders;
+      cashierBadge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+      cashierBadge.classList.add('hidden');
+    }
+
+    // عدد المنتجات وقيمة المخزون
+    const { data: products } = await supabase.from('products')
+   .select('stock_qty, cost_price')
+   .eq('store_id', currentStore.id);
+
+    const productCount = products?.length || 0;
+    const stockValue = products?.reduce((sum, p) => sum + (Number(p.stock_qty) * Number(p.cost_price)), 0) || 0;
+    document.getElementById('productCount').textContent = productCount;
+    document.getElementById('stockValue').textContent = stockValue.toFixed(2) + ' ر.س';
+  }
+
+  window.openStoreModal = function() {
+    document.getElementById('editStoreName').value = currentStore.store_name || '';
+    document.getElementById('editStorePhone').value = currentStore.phone || '';
+    document.getElementById('editStoreAddress').value = currentStore.address || '';
+    document.getElementById('editStoreLogo').value = currentStore.logo_url || '';
+    document.getElementById('storeMsg').textContent = '';
+    document.getElementById('storeModal').classList.remove('hidden');
+    document.getElementById('storeModal').classList.add('flex');
+  }
+
+  window.closeStoreModal = function() {
+    document.getElementById('storeModal').classList.add('hidden');
+  }
+
+  window.updateStore = async function() {
+    const name = document.getElementById('editStoreName').value.trim();
+    const phone = document.getElementById('editStorePhone').value.trim();
+    const address = document.getElementById('editStoreAddress').value.trim();
+    const logo = document.getElementById('editStoreLogo').value.trim();
+    const msg = document.getElementById('storeMsg');
+
+    if (!name ||!phone) {
+      msg.textContent = 'اسم المتجر والجوال مطلوبين';
+      msg.className = 'text-center text-sm font-bold text-red-600';
+      return;
+    }
+
+    const { error } = await supabase
+   .from('stores')
+   .update({
+        store_name: name,
+        phone: phone,
+        address: address,
+        logo_url: logo,
+        updated_at: new Date().toISOString()
+      })
+   .eq('id', currentStore.id);
+
+    if (error) {
+      msg.textContent = 'خطأ: ' + error.message;
+      msg.className = 'text-center text-sm font-bold text-red-600';
+    } else {
+      msg.textContent = '✅ تم حفظ التعديلات';
+      msg.className = 'text-center text-sm font-bold text-green-600';
+      currentStore = {...currentStore, store_name: name, phone, address, logo_url: logo };
+      document.getElementById('storeName').textContent = name;
+      if (logo) {
+        const logoImg = document.getElementById('storeLogoImg');
+        logoImg.src = logo;
+        logoImg.classList.remove('hidden');
+      }
+      setTimeout(() => closeStoreModal(), 1500);
+    }
+  }
+
+  window.logout = async function() {
+    await supabase.auth.signOut();
+    window.location.href = 'login.html';
+  }
+
+  window.openPasswordModal = function() {
+    document.getElementById('passwordModal').classList.remove('hidden');
+    document.getElementById('passwordModal').classList.add('flex');
+    document.getElementById('passwordMsg').textContent = '';
+  }
+
+  window.closePasswordModal = function() {
+    document.getElementById('passwordModal').classList.add('hidden');
+    document.getElementById('currentPassword').value = '';
+    document.getElementById('newPassword').value = '';
+    document.getElementById('confirmPassword').value = '';
+  }
+
+  window.changePassword = async function() {
+    const currentPass = document.getElementById('currentPassword').value;
+    const newPass = document.getElementById('newPassword').value;
+    const confirmPass = document.getElementById('confirmPassword').value;
+    const msg = document.getElementById('passwordMsg');
+
+    if (!currentPass ||!newPass ||!confirmPass) {
+      msg.textContent = 'عبي كل الحقول';
+      msg.className = 'text-center mt-3 text-sm font-bold text-red-600';
+      return;
+    }
+
+    if (newPass.length < 6) {
+      msg.textContent = 'كلمة السر الجديدة قصيرة';
+      msg.className = 'text-center mt-3 text-sm font-bold text-red-600';
+      return;
+    }
+
+    if (newPass!== confirmPass) {
+      msg.textContent = 'كلمة السر غير متطابقة';
+      msg.className = 'text-center mt-3 text-sm font-bold text-red-600';
+      return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPass
+    });
+
+    if (signInError) {
+      msg.textContent = 'كلمة السر الحالية غلط';
+      msg.className = 'text-center mt-3 text-sm font-bold text-red-600';
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: newPass });
+    if (error) {
+      msg.textContent = 'خطأ: ' + error.message;
+      msg.className = 'text-center mt-3 text-sm font-bold text-red-600';
+    } else {
+      msg.textContent = 'تم التحديث بنجاح ✅';
+      msg.className = 'text-center mt-3 text-sm font-bold text-green-600';
+      setTimeout(() => closePasswordModal(), 1500);
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
