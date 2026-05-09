@@ -1,61 +1,52 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mahdi - Smart Grocery POS</title>
+  <title>مهدي - تسجيل الدخول</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Inter', sans-serif; }
-    .bg-navy { background-color: #0B2545; }
-    .bg-gold { background-color: #F5B301; }
-    .text-navy { color: #0B2545; }
+    body { font-family: 'Cairo', sans-serif; }
+  .bg-navy { background-color: #0B2545; }
+  .bg-gold { background-color: #F5B301; }
+  .text-navy { color: #0B2545; }
   </style>
 </head>
 <body class="bg-navy min-h-screen flex items-center justify-center p-4">
   <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
     <div class="bg-navy text-white text-center py-8">
-      <h1 class="text-4xl font-black">Mahdi</h1>
-      <p class="text-gold mt-2">Smart Grocery POS System</p>
-      <div class="mt-4 px-6">
-        <div class="bg-gold/20 border border-gold rounded-lg p-3">
-          <p class="text-gold text-sm font-bold">🚀 Project Under Development</p>
-          <p class="text-white text-xs mt-1">Official launch coming soon</p>
-          <a href="https://github.com/mhdyalmrasby-debug/alabarat-pos" target="_blank" class="text-gold text-xs underline mt-2 inline-block hover:opacity-80">
-            View on GitHub →
-          </a>
-        </div>
-      </div>
+      <h1 class="text-4xl font-black">مهدي</h1>
+      <p class="text-gold mt-2">نظام إدارة التموينات الذكي</p>
     </div>
 
     <div class="p-8">
-      <!-- Login Form -->
+      <!-- تسجيل دخول -->
       <div id="loginForm">
-        <h2 class="text-2xl font-bold text-navy mb-6 text-center">Login</h2>
+        <h2 class="text-2xl font-bold text-navy mb-6 text-center">تسجيل الدخول</h2>
         <div class="space-y-4">
-          <input id="loginEmail" type="email" placeholder="Email Address" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
-          <input id="loginPassword" type="password" placeholder="Password" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
-          <button onclick="login()" class="w-full bg-navy text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-900">Sign In</button>
+          <input id="loginEmail" type="email" placeholder="البريد الإلكتروني" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
+          <input id="loginPassword" type="password" placeholder="كلمة المرور" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
+          <button onclick="login()" class="w-full bg-navy text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-900">دخول</button>
         </div>
         <p class="text-center mt-6 text-gray-600">
-          Don't have an account? 
-          <button onclick="showSignup()" class="text-navy font-bold">Sign Up</button>
+          ما عندك حساب؟ 
+          <button onclick="showSignup()" class="text-navy font-bold">سجل الآن</button>
         </p>
       </div>
 
-      <!-- Signup Form -->
+      <!-- تسجيل جديد -->
       <div id="signupForm" class="hidden">
-        <h2 class="text-2xl font-bold text-navy mb-6 text-center">Create Account</h2>
+        <h2 class="text-2xl font-bold text-navy mb-6 text-center">حساب جديد</h2>
         <div class="space-y-4">
-          <input id="storeName" type="text" placeholder="Store Name" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
-          <input id="signupEmail" type="email" placeholder="Email Address" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
-          <input id="signupPassword" type="password" placeholder="Password" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
-          <button onclick="signup()" class="w-full bg-gold text-navy py-3 rounded-lg font-bold text-lg hover:opacity-90">Create Account & Store</button>
+          <input id="storeName" type="text" placeholder="اسم المتجر" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
+          <input id="signupEmail" type="email" placeholder="البريد الإلكتروني" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
+          <input id="signupPassword" type="password" placeholder="كلمة المرور" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
+          <button onclick="signup()" class="w-full bg-gold text-navy py-3 rounded-lg font-bold text-lg hover:opacity-90">إنشاء حساب ومتجر</button>
         </div>
         <p class="text-center mt-6 text-gray-600">
-          Already have an account? 
-          <button onclick="showLogin()" class="text-navy font-bold">Sign In</button>
+          عندك حساب؟ 
+          <button onclick="showLogin()" class="text-navy font-bold">سجل دخول</button>
         </p>
       </div>
 
@@ -100,18 +91,18 @@
     const password = document.getElementById('loginPassword').value.trim();
 
     if (!email || !password) {
-      showMsg('Please enter email and password', 'error');
+      showMsg('عبي الإيميل وكلمة المرور', 'error');
       return;
     }
 
-    showMsg('Signing in...', 'info');
+    showMsg('جاري تسجيل الدخول...', 'info');
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      showMsg('Error: ' + error.message, 'error');
+      showMsg('خطأ: ' + error.message, 'error');
     } else {
-      showMsg('Login successful ✅', 'success');
+      showMsg('تم تسجيل الدخول بنجاح ✅', 'success');
       setTimeout(() => window.location.href = 'dashboard.html', 1000);
     }
   }
@@ -122,45 +113,48 @@
     const password = document.getElementById('signupPassword').value.trim();
 
     if (!storeName || !email || !password) {
-      showMsg('Please fill all fields', 'error');
+      showMsg('عبي كل الحقول', 'error');
       return;
     }
 
     if (password.length < 6) {
-      showMsg('Password must be at least 6 characters', 'error');
+      showMsg('كلمة المرور لازم 6 أحرف على الأقل', 'error');
       return;
     }
 
-    showMsg('Creating account and store...', 'info');
+    showMsg('جاري إنشاء الحساب والمتجر...', 'info');
 
+    // 1. نسجل المستخدم
     const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
 
     if (authError) {
-      showMsg('Signup error: ' + authError.message, 'error');
+      showMsg('خطأ في التسجيل: ' + authError.message, 'error');
       return;
     }
 
     if (!authData.user) {
-      showMsg('Confirmation email sent. Please verify and login', 'info');
+      showMsg('تم إرسال رابط التفعيل لإيميلك. فعّل الحساب وسجل دخول', 'info');
       return;
     }
 
+    // 2. ننشئ المتجر تلقائي بنفس الـ user_id
     const { error: storeError } = await supabase
     .from('stores')
     .insert({
         user_id: authData.user.id,
-        store_name: storeName
+        store_name: storeName  // ← هنا التعديل المهم
       });
 
     if (storeError) {
-      showMsg('Account created but store creation failed: ' + storeError.message, 'error');
+      showMsg('تم إنشاء الحساب لكن فشل إنشاء المتجر: ' + storeError.message, 'error');
       return;
     }
 
-    showMsg('Account and store created successfully ✅', 'success');
+    showMsg('تم إنشاء الحساب والمتجر بنجاح ✅', 'success');
     setTimeout(() => window.location.href = 'dashboard.html', 1500);
   }
 
+  // لو المستخدم مسجل دخول، حوله مباشرة
   supabase.auth.getSession().then(({ data: { session } }) => {
     if (session) window.location.href = 'dashboard.html';
   });
