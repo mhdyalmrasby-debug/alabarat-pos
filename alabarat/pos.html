@@ -131,7 +131,7 @@
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         showError('لازم تسجل دخول أول');
-        setTimeout(() => window.location.href = 'alabarat.html', 2000);
+        setTimeout(() => window.location.href = 'index.html', 2000);
         return;
       }
 
@@ -191,7 +191,7 @@
 
   async function loadProducts() {
     const { data: products, error } = await supabase.from('products')
-   .select('id, name, barcode, cost_price, selling_price, stock_qty')
+   .select('id, name, barcode, cost_price, sell_price, stock_qty')
    .eq('store_id', currentStore.id)
    .gt('stock_qty', 0)
    .order('name');
@@ -213,11 +213,11 @@
       return;
     }
     grid.innerHTML = filteredProducts.map(p => `
-      <div onclick="addToInvoice(${p.id})" class="product-card bg-white p-4 rounded-lg shadow cursor-pointer hover:shadow-xl transition">
+      <div onclick="addToInvoice('${p.id}')" class="product-card bg-white p-4 rounded-lg shadow cursor-pointer hover:shadow-xl transition">
         <div class="font-bold text-navy text-lg mb-1">${p.name}</div>
         <div class="text-sm text-gray-500 mb-2">${p.barcode || 'بدون باركود'}</div>
         <div class="flex justify-between items-end">
-          <span class="text-2xl font-black text-green-600">${Number(p.selling_price).toFixed(2)}</span>
+          <span class="text-2xl font-black text-green-600">${Number(p.sell_price).toFixed(2)}</span>
           <span class="text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded">متوفر: ${p.stock_qty}</span>
         </div>
       </div>
@@ -258,13 +258,13 @@
         <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
           <div class="flex-1">
             <div class="font-bold">${item.name}</div>
-            <div class="text-sm text-gray-600">${Number(item.selling_price).toFixed(2)} × ${item.qty}</div>
+            <div class="text-sm text-gray-600">${Number(item.sell_price).toFixed(2)} × ${item.qty}</div>
           </div>
           <div class="flex items-center gap-2">
-            <button onclick="updateQty(${item.id}, -1)" class="bg-red-500 text-white w-8 h-8 rounded font-bold">-</button>
+            <button onclick="updateQty('${item.id}', -1)" class="bg-red-500 text-white w-8 h-8 rounded font-bold">-</button>
             <span class="w-8 text-center font-bold">${item.qty}</span>
-            <button onclick="updateQty(${item.id}, 1)" class="bg-green-500 text-white w-8 h-8 rounded font-bold">+</button>
-            <button onclick="removeItem(${item.id})" class="text-red-600 mr-2">🗑️</button>
+            <button onclick="updateQty('${item.id}', 1)" class="bg-green-500 text-white w-8 h-8 rounded font-bold">+</button>
+            <button onclick="removeItem('${item.id}')" class="text-red-600 mr-2">🗑️</button>
           </div>
         </div>
       `).join('');
@@ -287,7 +287,7 @@
   }
 
   function calculateTotal() {
-    const subtotal = invoice.reduce((sum, item) => sum + (item.selling_price * item.qty), 0);
+    const subtotal = invoice.reduce((sum, item) => sum + (item.sell_price * item.qty), 0);
     const tax = subtotal * 0.15;
     const total = subtotal + tax;
     document.getElementById('subtotal').textContent = subtotal.toFixed(2) + ' ر.س';
@@ -308,7 +308,7 @@
   }
 
   async function completeSale(paymentType, customerName = null) {
-    const subtotal = invoice.reduce((sum, item) => sum + (item.selling_price * item.qty), 0);
+    const subtotal = invoice.reduce((sum, item) => sum + (item.sell_price * item.qty), 0);
     const tax = subtotal * 0.15;
     const total = subtotal + tax;
 
@@ -326,13 +326,13 @@
         sale_id: sale.id,
         product_id: item.id,
         quantity: item.qty,
-        price_at_sale: item.selling_price,
+        price_at_sale: item.sell_price,
         cost_price: item.cost_price
       });
       await supabase.from('products').update({ stock_qty: item.stock_qty - item.qty }).eq('id', item.id);
     }
 
-    alert('تمت العملية بنجاح ✅ فاتورة رقم: ' + sale.id);
+    alert('تمت العملية بنجاح ✅ فاتورة رقم: ' + sale.id.substring(0,8));
     invoice = [];
     renderInvoice();
     await loadProducts();
@@ -378,7 +378,7 @@
       <div class="order-new bg-white rounded-xl shadow-lg p-6 border-2 border-gold">
         <div class="flex justify-between items-start mb-4">
           <div>
-            <div class="text-2xl font-black text-navy">طلب #${order.id}</div>
+            <div class="text-2xl font-black text-navy">طلب #${order.id.substring(0,8)}</div>
             <div class="text-sm text-gray-500">${new Date(order.created_at).toLocaleString('ar-SA')}</div>
           </div>
           <span class="bg-green-500 text-white px-4 py-2 rounded-full font-bold">جديد</span>
@@ -419,10 +419,10 @@
         </div>
 
         <div class="flex gap-3">
-          <button onclick="completeOrder(${order.id})" class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-green-700">
+          <button onclick="completeOrder('${order.id}')" class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-green-700">
             ✅ تم التجهيز والتوصيل
           </button>
-          <button onclick="rejectOrder(${order.id})" class="bg-red-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-red-600">
+          <button onclick="rejectOrder('${order.id}')" class="bg-red-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-red-600">
             ❌ رفض
           </button>
         </div>
@@ -435,7 +435,6 @@
     
     const order = newOrders.find(o => o.id === orderId);
     
-    // 1. نحول الطلب لعملية بيع
     const { data: sale, error: saleError } = await supabase.from('sales').insert({
       store_id: currentStore.id,
       total_amount: order.total_amount,
@@ -448,7 +447,6 @@
       return;
     }
 
-    // 2. نضيف عناصر البيع ونخصم من المخزون
     for (const item of order.items) {
       const product = allProducts.find(p => p.id === item.id);
       await supabase.from('sale_items').insert({
@@ -459,7 +457,6 @@
         cost_price: product?.cost_price || 0
       });
       
-      // خصم من المخزون
       if (product) {
         await supabase.from('products').update({ 
           stock_qty: product.stock_qty - item.qty 
@@ -467,7 +464,6 @@
       }
     }
 
-    // 3. نحدث حالة الطلب
     await supabase.from('orders').update({ status: 'مكتمل' }).eq('id', orderId);
 
     alert('تم ختم الطلب وتسجيله في المبيعات ✅');
