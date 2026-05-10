@@ -8,9 +8,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; }
-    .bg-navy { background-color: #0B2545; }
-    .bg-gold { background-color: #F5B301; }
-    .text-navy { color: #0B2545; }
+   .bg-navy { background-color: #0B2545; }
+   .bg-gold { background-color: #F5B301; }
+   .text-navy { color: #0B2545; }
   </style>
 </head>
 <body class="bg-navy min-h-screen flex items-center justify-center p-4">
@@ -39,7 +39,7 @@
           <button onclick="login()" class="w-full bg-navy text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-900">Sign In</button>
         </div>
         <p class="text-center mt-6 text-gray-600">
-          Don't have an account? 
+          Don't have an account?
           <button onclick="showSignup()" class="text-navy font-bold">Sign Up</button>
         </p>
       </div>
@@ -50,11 +50,11 @@
         <div class="space-y-4">
           <input id="storeName" type="text" placeholder="Store Name" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
           <input id="signupEmail" type="email" placeholder="Email Address" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
-          <input id="signupPassword" type="password" placeholder="Password" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
+          <input id="signupPassword" type="password" placeholder="Password - min 6 chars" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
           <button onclick="signup()" class="w-full bg-gold text-navy py-3 rounded-lg font-bold text-lg hover:opacity-90">Create Account & Store</button>
         </div>
         <p class="text-center mt-6 text-gray-600">
-          Already have an account? 
+          Already have an account?
           <button onclick="showLogin()" class="text-navy font-bold">Sign In</button>
         </p>
       </div>
@@ -99,7 +99,7 @@
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value.trim();
 
-    if (!email || !password) {
+    if (!email ||!password) {
       showMsg('Please enter email and password', 'error');
       return;
     }
@@ -121,49 +121,29 @@
     const email = document.getElementById('signupEmail').value.trim();
     const password = document.getElementById('signupPassword').value.trim();
 
-    if (!storeName || !email || !password) {
+    if (!storeName ||!email ||!password) {
       showMsg('Please fill all fields', 'error');
       return;
     }
 
-    if (password.length < 6) {
-      showMsg('Password must be at least 6 characters', 'error');
-      return;
+    showMsg('Creating account...', 'info');
+
+    // نرسل اسم المتجر مع بيانات اليوزر
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { store_name: storeName }
+      }
+    });
+
+    if (error) {
+      showMsg('Signup error: ' + error.message, 'error');
+    } else {
+      showMsg('Account created! Check your email to confirm ✅', 'success');
+      setTimeout(() => showLogin(), 2000);
     }
-
-    showMsg('Creating account and store...', 'info');
-
-    const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
-
-    if (authError) {
-      showMsg('Signup error: ' + authError.message, 'error');
-      return;
-    }
-
-    if (!authData.user) {
-      showMsg('Confirmation email sent. Please verify and login', 'info');
-      return;
-    }
-
-    const { error: storeError } = await supabase
-    .from('stores')
-    .insert({
-        user_id: authData.user.id,
-        store_name: storeName
-      });
-
-    if (storeError) {
-      showMsg('Account created but store creation failed: ' + storeError.message, 'error');
-      return;
-    }
-
-    showMsg('Account and store created successfully ✅', 'success');
-    setTimeout(() => window.location.href = 'dashboard.html', 1500);
   }
-
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    if (session) window.location.href = 'dashboard.html';
-  });
 </script>
 </body>
 </html>
