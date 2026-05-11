@@ -27,7 +27,7 @@
         <div class="space-y-4">
           <input id="loginEmail" type="email" placeholder="البريد الإلكتروني" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
           <input id="loginPassword" type="password" placeholder="كلمة المرور" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
-          <button onclick="login()" class="w-full bg-navy text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-900">دخول</button>
+          <button onclick="index()" class="w-full bg-navy text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-900">دخول</button>
         </div>
         <p class="text-center mt-6 text-gray-600">
           ما عندك حساب؟ 
@@ -86,7 +86,7 @@
     document.getElementById('msg').textContent = '';
   }
 
-  window.login = async function() {
+  window.index = async function() {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value.trim();
 
