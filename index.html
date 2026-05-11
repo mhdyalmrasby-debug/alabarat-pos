@@ -3,132 +3,184 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>دخول - العَبَرات</title>
+  <title>لوحة التحكم - العَبَرات</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Cairo', sans-serif; }
-    .bg-navy { background-color: #0B2545; }
-    .bg-gold { background-color: #F5B301; }
-    .text-navy { color: #0B2545; }
-    .tab-active { border-bottom: 3px solid #F5B301; }
+.bg-navy { background-color: #0B2545; }
+.bg-gold { background-color: #F5B301; }
+.text-navy { color: #0B2545; }
   </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
-  <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
-    <div class="text-center mb-6">
-      <h1 class="text-3xl font-black text-navy">العَبَرات</h1>
-      <p class="text-gray-500">نظام إدارة المتاجر السحابي</p>
+<body class="bg-gray-100">
+  <!-- Development Banner -->
+  <div class="bg-yellow-400 text-navy text-center py-2 text-sm font-bold">
+    ⚠️ Project Under Development - Live Demo Version 1.0
+  </div>
+
+  <div class="bg-navy text-white p-4">
+    <div class="container mx-auto flex justify-between items-center flex-wrap gap-3">
+      <h1 class="text-2xl font-black">لوحة التحكم</h1>
+      <div class="flex gap-3 flex-wrap items-center">
+        <span id="userEmail" class="text-sm text-white/70"></span>
+        <a href="account.html" class="bg-white/20 px-4 py-2 rounded hover:bg-white/30">حسابي</a>
+        <a href="products.html" class="bg-white/20 px-4 py-2 rounded hover:bg-white/30">المنتجات</a>
+        <a href="pos.html" class="bg-gold text-navy px-4 py-2 rounded font-bold hover:opacity-90">نقطة البيع</a>
+        <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded font-bold hover:bg-red-700">خروج</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container mx-auto p-6">
+    <!-- معلومات المتجر -->
+    <div class="bg-white p-6 rounded-lg shadow mb-6">
+      <div class="flex justify-between items-start flex-wrap gap-4">
+        <div>
+          <h2 class="text-xl font-bold text-navy mb-2">مرحباً بك في متجرك</h2>
+          <p class="text-gray-600">اسم المتجر: <span id="storeName" class="font-bold text-navy">جاري التحميل...</span></p>
+          <p class="text-gray-600 mt-1">الحالة: <span id="storeStatus" class="font-bold">...</span></p>
+        </div>
+        <div class="text-left">
+          <p class="text-sm text-gray-500 mb-2">رابط متجرك للزبائن:</p>
+          <div class="flex gap-2 items-center bg-gray-100 p-2 rounded">
+            <a id="storeLink" target="_blank" class="text-blue-600 text-sm break-all"></a>
+            <button id="copyLink" class="bg-gray-200 px-3 py-1 rounded text-sm whitespace-nowrap">نسخ</button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- التبويبات -->
-    <div class="flex mb-6 border-b">
-      <button id="loginTab" onclick="showTab('login')" class="flex-1 py-2 font-bold tab-active">دخول</button>
-      <button id="signupTab" onclick="showTab('signup')" class="flex-1 py-2 font-bold text-gray-400">حساب جديد</button>
-      <button id="resetTab" onclick="showTab('reset')" class="flex-1 py-2 font-bold text-gray-400">نسيت كلمة السر</button>
+    <!-- الإحصائيات -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white p-4 rounded-lg shadow">
+        <div class="text-gray-500 text-sm">مبيعات اليوم</div>
+        <div id="todaySales" class="text-2xl font-black text-navy">0.00 ر.س</div>
+      </div>
+      <div class="bg-white p-4 rounded-lg shadow">
+        <div class="text-gray-500 text-sm">عدد الفواتير اليوم</div>
+        <div id="todayInvoices" class="text-2xl font-black text-green-600">0</div>
+      </div>
+      <div class="bg-white p-4 rounded-lg shadow">
+        <div class="text-gray-500 text-sm">إجمالي المنتجات</div>
+        <div id="totalProducts" class="text-2xl font-black text-blue-600">0</div>
+      </div>
+      <div class="bg-white p-4 rounded-lg shadow">
+        <div class="text-gray-500 text-sm">منتجات منخفضة</div>
+        <div id="lowStock" class="text-2xl font-black text-red-600">0</div>
+      </div>
     </div>
 
-    <!-- تسجيل الدخول -->
-    <div id="loginForm">
-      <input id="loginEmail" type="email" placeholder="البريد الإلكتروني" class="w-full p-3 mb-3 border-2 border-gray-200 rounded-lg focus:border-gold">
-      <input id="loginPassword" type="password" placeholder="كلمة المرور" class="w-full p-3 mb-4 border-2 border-gray-200 rounded-lg focus:border-gold">
-      <button onclick="login()" class="w-full bg-navy text-white p-3 rounded-lg font-bold mb-2">دخول</button>
+    <!-- روابط سريعة -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <a href="pos.html" class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition text-center">
+        <div class="text-4xl mb-3">🛒</div>
+        <h3 class="text-xl font-bold text-navy">نقطة البيع</h3>
+        <p class="text-gray-500 text-sm mt-1">ابدأ البيع وإصدار الفواتير</p>
+      </a>
+      <a href="products.html" class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition text-center">
+        <div class="text-4xl mb-3">📦</div>
+        <h3 class="text-xl font-bold text-navy">إدارة المنتجات</h3>
+        <p class="text-gray-500 text-sm mt-1">أضف وعدل منتجاتك</p>
+      </a>
+      <a href="account.html" class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition text-center">
+        <div class="text-4xl mb-3">⚙️</div>
+        <h3 class="text-xl font-bold text-navy">إعدادات المتجر</h3>
+        <p class="text-gray-500 text-sm mt-1">عدل الاسم والرابط وانشر متجرك</p>
+      </a>
     </div>
-
-    <!-- إنشاء حساب -->
-    <div id="signupForm" class="hidden">
-      <input id="signupEmail" type="email" placeholder="البريد الإلكتروني" class="w-full p-3 mb-3 border-2 border-gray-200 rounded-lg focus:border-gold">
-      <input id="signupPassword" type="password" placeholder="كلمة المرور 6 أحرف على الأقل" class="w-full p-3 mb-3 border-2 border-gray-200 rounded-lg focus:border-gold">
-      <input id="storeName" type="text" placeholder="اسم المتجر" class="w-full p-3 mb-3 border-2 border-gray-200 rounded-lg focus:border-gold">
-      <input id="phone" type="text" placeholder="رقم الجوال 05xxxxxxxx" class="w-full p-3 mb-4 border-2 border-gray-200 rounded-lg focus:border-gold">
-      <button onclick="signup()" class="w-full bg-gold text-navy p-3 rounded-lg font-bold">إنشاء حساب</button>
-    </div>
-
-    <!-- استعادة كلمة السر -->
-    <div id="resetForm" class="hidden">
-      <p class="text-sm text-gray-600 mb-3">ندز لك رابط تغيير كلمة السر على إيميلك</p>
-      <input id="resetEmail" type="email" placeholder="البريد الإلكتروني" class="w-full p-3 mb-4 border-2 border-gray-200 rounded-lg focus:border-gold">
-      <button onclick="resetPassword()" class="w-full bg-gray-600 text-white p-3 rounded-lg font-bold">إرسال الرابط</button>
-    </div>
-
-    <div id="msg" class="text-center mt-4 text-sm font-bold"></div>
   </div>
 
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
-  const supabase = createClient('https://eeiegignudoedrlkuaqn.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlaWVnaWdudWRvZWRybGt1YXFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODUwNzMsImV4cCI6MjA5MzA2MTA3M30.gtqh1KbGmXZ9VBkmpFCYtJetn1ZXPHcp5oX9sENBb2Q')
 
-  window.showTab = function(tab) {
-    ['login', 'signup', 'reset'].forEach(t => {
-      document.getElementById(t + 'Form').classList.add('hidden');
-      document.getElementById(t + 'Tab').classList.remove('tab-active');
-      document.getElementById(t + 'Tab').classList.add('text-gray-400');
-    });
-    document.getElementById(tab + 'Form').classList.remove('hidden');
-    document.getElementById(tab + 'Tab').classList.add('tab-active');
-    document.getElementById(tab + 'Tab').classList.remove('text-gray-400');
-    document.getElementById('msg').textContent = '';
-  }
+  // --- روابط مشروع العبرات ---
+  const SUPABASE_URL = 'https://eeiegignudoedrlkuaqn.supabase.co'
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlaWVnaWdudWRvZWRybGt1YXFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODUwNzMsImV4cCI6MjA5MzA2MTA3M30.gtqh1KbGmXZ9VBkmpFCYtJetn1ZXPHcp5oX9sENBb2Q'
+  const siteUrl = 'https://mhdyalmrasby-debug.github.io/alabarat'
+  // ----------------------
 
-  function showMsg(text, isError = true) {
-    const msg = document.getElementById('msg');
-    msg.textContent = text;
-    msg.className = `text-center mt-4 text-sm font-bold ${isError ? 'text-red-600' : 'text-green-600'}`;
-  }
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-  window.login = async function() {
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
-    if (!email || !password) return showMsg('عبي الإيميل والباسوورد');
-    
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) showMsg('خطأ: ' + error.message);
-    else {
-      showMsg('تم الدخول بنجاح...', false);
-      setTimeout(() => window.location.href = 'dashboard.html', 800);
+  async function init() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      window.location.href = 'index.html'; // تم التعديل هنا
+      return;
     }
-  }
 
-  window.signup = async function() {
-    const email = document.getElementById('signupEmail').value;
-    const password = document.getElementById('signupPassword').value;
-    const storeName = document.getElementById('storeName').value;
-    const phone = document.getElementById('phone').value;
+    document.getElementById('userEmail').textContent = user.email;
 
-    if (!email || !password || !storeName || !phone) return showMsg('عبي كل الحقول');
-    if (password.length < 6) return showMsg('كلمة المرور لازم 6 أحرف على الأقل');
+    // جلب المتجر - استخدمنا user_id مو owner_id
+    const { data: store, error } = await supabase
+    .from('stores')
+    .select('*')
+    .eq('user_id', user.id)
+    .single();
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
-    if (authError) return showMsg('خطأ: ' + authError.message);
-
-    const { error: storeError } = await supabase.from('stores').insert({
-      user_id: authData.user.id,
-      store_name: storeName,
-      phone: phone
-    });
-
-    if (storeError) showMsg('خطأ في إنشاء المتجر: ' + storeError.message);
-    else {
-      showMsg('تم إنشاء الحساب ✅ ادخل الآن', false);
-      setTimeout(() => showTab('login'), 1500);
+    if (error ||!store) {
+      document.getElementById('storeName').textContent = 'لا يوجد متجر';
+      document.getElementById('storeStatus').textContent = 'يجب إنشاء متجر من صفحة التسجيل';
+      document.getElementById('storeStatus').className = 'text-red-600 font-bold';
+      return;
     }
+
+    // عرض بيانات المتجر
+    document.getElementById('storeName').textContent = store.store_name || store.name || 'متجري';
+    const isPublished = store.status === 'published';
+    const statusEl = document.getElementById('storeStatus');
+    statusEl.textContent = isPublished? 'منشور ✅' : 'مسودة ⚠️';
+    statusEl.className = isPublished? 'text-green-600 font-bold' : 'text-orange-600 font-bold';
+
+    // رابط المتجر
+    const slug = store.slug || 'store-' + user.id.slice(0, 8);
+    const storeUrl = `${siteUrl}/shop.html?slug=${slug}`;
+    const linkEl = document.getElementById('storeLink');
+    linkEl.href = storeUrl;
+    linkEl.textContent = storeUrl;
+
+    document.getElementById('copyLink').onclick = async () => {
+      await navigator.clipboard.writeText(storeUrl);
+      const btn = document.getElementById('copyLink');
+      btn.textContent = 'تم النسخ ✓';
+      setTimeout(() => btn.textContent = 'نسخ', 2000);
+    };
+
+    // جلب الإحصائيات
+    await loadStats(store.id);
   }
 
-  window.resetPassword = async function() {
-    const email = document.getElementById('resetEmail').value;
-    if (!email) return showMsg('اكتب إيميلك');
-    
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://statuesque-creponne-1fce71.netlify.app/update-password.html'
-    });
-    
-    if (error) showMsg('خطأ: ' + error.message);
-    else showMsg('تم إرسال رابط التغيير على إيميلك 📧', false);
+  async function loadStats(storeId) {
+    const today = new Date().toISOString().split('T')[0];
+
+    // مبيعات اليوم
+    const { data: todaySalesData } = await supabase
+    .from('sales')
+    .select('total')
+    .eq('store_id', storeId)
+    .gte('created_at', today);
+
+    const todayTotal = todaySalesData?.reduce((sum, s) => sum + Number(s.total), 0) || 0;
+    document.getElementById('todaySales').textContent = todayTotal.toFixed(2) + ' ر.س';
+    document.getElementById('todayInvoices').textContent = todaySalesData?.length || 0;
+
+    // المنتجات
+    const { data: products } = await supabase
+    .from('products')
+    .select('stock_qty')
+    .eq('store_id', storeId);
+
+    document.getElementById('totalProducts').textContent = products?.length || 0;
+    const lowStock = products?.filter(p => Number(p.stock_qty) <= 5).length || 0;
+    document.getElementById('lowStock').textContent = lowStock;
   }
 
-  // لو مسجل دخول روح للوحة التحكم
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) window.location.href = 'dashboard.html';
+  window.logout = async function() {
+    await supabase.auth.signOut();
+    window.location.href = 'index.html'; // تم التعديل هنا
+  }
+
+  init();
 </script>
 </body>
 </html>
