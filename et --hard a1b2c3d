@@ -1,0 +1,22 @@
+[33m26c9e50[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m اضافة صفحات المتجر وحسابي
+[33m4826003[m Resolve conflicts: use local files
+[33md501945[m Initial commit from VS Code
+[33m752972b[m feat: Login page - Supabase Auth integration
+[33m05d4107[m feat: Products page - Full Supabase integration
+[33ma200185[m feat: نظام العبرات POS - ربط Supabase وادارة المنتجات
+[33m86fb6c5[m feat: add products management page with RLS and expiry tracking
+[33m595593f[m feat: English dashboard + fix logout + dev banner
+[33mefa321a[m Add Supabase Auth login page
+[33med4c1c6[m Update dashboard.html to English + Fix logout redirect
+[33m89a67cb[m  Add Supabase Auth login page
+[33mafe6809[m Update index.html
+[33m782318c[m Add Supabase Auth login page
+[33me71e8a4[m Delete now
+[33m60c06cd[m Update index.html
+[33m953e6f2[m Add files via upload
+[33m0dc44c7[m Update index.html
+[33mdd79d79[m Rename alabarat.html to index.html
+[33m037f87a[m Update and rename index.html to now
+[33mabc0282[m  Update full project files
+[33m9502d85[m Create index.html
+[33m7be52a1[m العَبَرات v1 - كاشير ومخزون ومشتريات
