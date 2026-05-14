@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>طلبات العملاء</title>
+    <link rel="icon" href="data:,">
+    <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        body { font-family: 'Cairo', sans-serif; }
+        .toast-show { opacity: 1 !important; transform: translateY(0) !important; }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <div class="max-w-6xl mx-auto p-6">
+        
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">📋 طلبات العملاء</h1>
+                <p class="text-gray-500">إدارة وتجهيز طلبات متجرك</p>
+            </div>
+            <a href="dashboard.html" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+                العودة للوحة التحكم
+            </a>
+        </div>
+
+        <div class="bg-white rounded-xl shadow p-4 mb-6">
+            <select id="statusFilter" class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="all">كل الحالات</option>
+                <option value="جديد">جديد</option>
+                <option value="قيد التجهيز">قيد التجهيز</option>
+                <option value="تم التسليم">تم التسليم</option>
+                <option value="ملغي">ملغي</option>
+            </select>
+        </div>
+
+        <div id="ordersContainer" class="space-y-4">
+            <p class="text-center text-gray-500 py-10">جاري تحميل الطلبات...</p>
+        </div>
+
+    </div>
+
+    <div id="toast" class="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-all opacity-0 -translate-y-4"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://jgekcfwacinmxkylrdpm.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZWtjZndhY2lubXhreWxyZHBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTQxNTYsImV4cCI6MjA5NDI3MDE1Nn0._RA5UoWuUyPM0G4aGd9m2LOcsaEiMan2-Lvx60Cnf4Y';
+        
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentUser = null;
+        let allOrders = [];
+        let audioCtx;
+
+        document.addEventListener('click', () => {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }, { once: true });
+
+        function playNotificationSound() {
+            if (!audioCtx) return;
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.frequency.value = 800;
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.5);
+        }
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `fixed top-4 right-4 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-all ${isError ? 'bg-red-600' : 'bg-green-600'}`;
+            toast.classList.add('toast-show');
+            setTimeout(() => {
+                toast.classList.remove('toast-show');
+            }, 3000);
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+           const { data: { user } } = await supabaseClient.auth.getUser();
+            
+            if (!user) {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            currentUser = user;
+            await loadOrders();
+            setupRealtime();
+        });
+
+        function setupRealtime() {
+            supabaseClient
+              .channel('orders-changes')
+              .on('postgres_changes', 
+                { event: 'INSERT', schema: 'public', table: 'orders', filter: `store_id=eq.${currentUser.id}` }, 
+                (payload) => {
+                  playNotificationSound();
+                  showToast('طلب جديد وصل! 📦');
+                  allOrders.unshift(payload.new);
+                  renderOrders();
+                }
+              )
+              .on('postgres_changes', 
+                { event: 'UPDATE', schema: 'public', table: 'orders', filter: `store_id=eq.${currentUser.id}` }, 
+                (payload) => {
+                  const idx = allOrders.findIndex(o => o.id === payload.new.id);
+                  if (idx !== -1) {
+                    allOrders[idx] = payload.new;
+                    renderOrders();
+                  }
+                }
+              )
+              .subscribe();
+        }
+
+        async function loadOrders() {
+            const { data, error } = await supabaseClient
+               .from('orders')
+               .select('*')
+               .eq('store_id', currentUser.id)
+               .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error(error);
+                document.getElementById('ordersContainer').innerHTML = 
+                    '<p class="text-center text-red-500">خطأ في تحميل الطلبات: ' + error.message + '</p>';
+                return;
+            }
+
+            allOrders = data || [];
+            renderOrders();
+        }
+
+        function renderOrders() {
+            const container = document.getElementById('ordersContainer');
+            const filter = document.getElementById('statusFilter').value;
+            const filtered = filter === 'all' ? allOrders : allOrders.filter(o => o.status === filter);
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-10">لا توجد طلبات</p>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(order => {
+                const items = order.items || [];
+                const statusColor = {
+                    'جديد': 'bg-blue-100 text-blue-700',
+                    'قيد التجهيز': 'bg-yellow-100 text-yellow-700',
+                    'تم التسليم': 'bg-green-100 text-green-700',
+                    'ملغي': 'bg-red-100 text-red-700'
+                };
+
+                return `
+                    <div class="bg-white rounded-xl shadow p-6 transition hover:shadow-lg">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-sm text-gray-500">رقم الطلب: #${order.id}</p>
+                                <p class="text-sm text-gray-500">${new Date(order.created_at).toLocaleString('ar-SA')}</p>
+                            </div>
+                            <span class="px-3 py-1 rounded-full text-sm font-semibold ${statusColor[order.status] || 'bg-gray-100 text-gray-700'}">
+                                ${order.status}
+                            </span>
+                        </div>
+
+                        <div class="border-t pt-4 mb-4">
+                            <p class="font-semibold mb-2">بيانات العميل:</p>
+                            <p>الاسم: ${order.customer_name || 'غير محدد'}</p>
+                            <p>الجوال: <a href="tel:${order.customer_phone}" class="text-blue-600 hover:underline">${order.customer_phone || 'غير محدد'}</a></p>
+                        </div>
+
+                        <div class="border-t pt-4 mb-4">
+                            <p class="font-semibold mb-2">المنتجات:</p>
+                            ${items.map(item => `
+                                <div class="flex justify-between py-1 text-sm">
+                                    <span>${item.name} × ${item.quantity}</span>
+                                    <span>${(item.price * item.quantity).toFixed(2)} ريال</span>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        ${order.updated_at ? `<p class="text-xs text-gray-400 mb-2">آخر تحديث: ${new Date(order.updated_at).toLocaleString('ar-SA')}</p>` : ''}
+
+                        <div class="border-t pt-4 flex justify-between items-center flex-wrap gap-3">
+                            <p class="text-xl font-bold">الإجمالي: ${order.total_amount} ريال</p>
+                            <div class="flex gap-2">
+                                ${order.status === 'جديد' ? 
+                                    `<button onclick="updateStatus(${order.id}, 'قيد التجهيز', this)" 
+                                        class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 disabled:opacity-50">
+                                        بدء التجهيز
+                                    </button>` : ''}
+                                
+                                ${order.status === 'قيد التجهيز' ? 
+                                    `<button onclick="updateStatus(${order.id}, 'تم التسليم', this)" 
+                                        class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50">
+                                        تم التسليم
+                                    </button>` : ''}
+                                
+                                ${order.status !== 'ملغي' && order.status !== 'تم التسليم' ? 
+                                    `<button onclick="updateStatus(${order.id}, 'ملغي', this)" 
+                                        class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50">
+                                        إلغاء
+                                    </button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function updateStatus(orderId, newStatus, btn) {
+            const numericId = parseInt(orderId, 10);
+            if (isNaN(numericId)) {
+                showToast('خطأ: رقم الطلب غير صحيح', true);
+                return;
+            }
+
+            const order = allOrders.find(o => o.id === numericId);
+            if (!order) {
+                showToast('الطلب غير موجود', true);
+                return;
+            }
+
+            if(btn) {
+                btn.disabled = true;
+                btn.textContent = 'جاري...';
+            }
+
+            // لو بنسلم الطلب لأول مرة، نقص المخزون من جدول products
+            if (newStatus === 'تم التسليم' && order.status !== 'تم التسليم') {
+                const stockOk = await decreaseStock(order.items);
+                if (!stockOk) {
+                    if(btn) {
+                        btn.disabled = false;
+                        btn.textContent = 'تم التسليم';
+                    }
+                    return;
+                }
+            }
+
+            const { error } = await supabaseClient
+              .from('orders')
+              .update({ 
+                status: newStatus,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', numericId)
+              .eq('store_id', currentUser.id);
+
+            if (error) {
+                console.error('Update Error:', error);
+                showToast(`فشل التحديث: ${error.message}`, true);
+                if(btn) {
+                    btn.disabled = false;
+                    btn.textContent = newStatus === 'تم التسليم' ? 'تم التسليم' : newStatus === 'قيد التجهيز' ? 'بدء التجهيز' : 'إلغاء';
+                }
+            } else {
+                showToast('تم تحديث الحالة بنجاح');
+            }
+        }
+
+        async function decreaseStock(items) {
+            try {
+                for (const item of items) {
+                    // جيب الكمية الحالية من جدول products
+                    const { data: product, error: fetchError } = await supabaseClient
+                        .from('products')
+                        .select('quantity')
+                        .eq('id', item.id)
+                        .eq('user_id', currentUser.id)
+                        .single();
+
+                    if (fetchError || !product) {
+                        showToast(`المنتج ${item.name} غير موجود في المخزون`, true);
+                        return false;
+                    }
+
+                    const newQty = product.quantity - item.quantity;
+                    if (newQty < 0) {
+                        showToast(`الكمية غير كافية للمنتج ${item.name}`, true);
+                        return false;
+                    }
+
+                    // حدث الكمية في جدول products
+                    const { error: updateError } = await supabaseClient
+                        .from('products')
+                        .update({ quantity: newQty })
+                        .eq('id', item.id)
+                        .eq('user_id', currentUser.id);
+
+                    if (updateError) {
+                        console.error(updateError);
+                        showToast('فشل تحديث المخزون', true);
+                        return false;
+                    }
+                }
+                return true;
+            } catch (err) {
+                console.error(err);
+                showToast('خطأ غير متوقع في المخزون', true);
+                return false;
+            }
+        }
+
+        document.getElementById('statusFilter').onchange = () => renderOrders();
+    </script>
+</body>
+</html>

@@ -1,163 +1,142 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>مهدي - تسجيل الدخول</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Cairo', sans-serif; }
-  .bg-navy { background-color: #0B2545; }
-  .bg-gold { background-color: #F5B301; }
-  .text-navy { color: #0B2545; }
-  </style>
+    <meta charset="UTF-8">
+    <link rel="icon" href="data:,">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>العبرات - تسجيل الدخول</title>
+    <link rel="icon" href="data:,">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        body { font-family: 'Cairo', sans-serif; }
+    </style>
 </head>
-<body class="bg-navy min-h-screen flex items-center justify-center p-4">
-  <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
-    <div class="bg-navy text-white text-center py-8">
-      <h1 class="text-4xl font-black">مهدي</h1>
-      <p class="text-gold mt-2">نظام إدارة التموينات الذكي</p>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <span class="text-white text-2xl font-bold">ع</span>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800">العبرات</h1>
+            <p class="text-gray-500 mt-2">سجل دخولك للمتابعة</p>
+        </div>
+
+        <div class="flex mb-6 bg-gray-100 rounded-lg p-1">
+            <button id="loginTab" class="flex-1 py-2 rounded-md bg-white shadow-sm font-semibold text-indigo-600">دخول</button>
+            <button id="signupTab" class="flex-1 py-2 rounded-md font-semibold text-gray-500">إنشاء حساب</button>
+        </div>
+
+        <div id="message" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
+
+        <form id="loginForm">
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">البريد الإلكتروني</label>
+                <input type="email" id="loginEmail" required class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-700 mb-2">كلمة المرور</label>
+                <input type="password" id="loginPassword" required class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700">
+                تسجيل الدخول
+            </button>
+        </form>
+
+        <form id="signupForm" class="hidden">
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">البريد الإلكتروني</label>
+                <input type="email" id="signupEmail" required class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-700 mb-2">كلمة المرور</label>
+                <input type="password" id="signupPassword" required minlength="6" class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700">
+                إنشاء حساب
+            </button>
+        </form>
+
+        <!-- فاصل -->
+        <div class="flex items-center my-6">
+            <div class="flex-1 border-t border-gray-300"></div>
+            <span class="px-4 text-gray-500 text-sm">أو</span>
+            <div class="flex-1 border-t border-gray-300"></div>
+        </div>
+
+        <!-- زر التسوق -->
+        <a href="store.html" class="block w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 text-center">
+            🛍️ دخول كزائر للتسوق
+        </a>
     </div>
 
-    <div class="p-8">
-      <!-- تسجيل دخول -->
-      <div id="loginForm">
-        <h2 class="text-2xl font-bold text-navy mb-6 text-center">تسجيل الدخول</h2>
-        <div class="space-y-4">
-          <input id="loginEmail" type="email" placeholder="البريد الإلكتروني" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
-          <input id="loginPassword" type="password" placeholder="كلمة المرور" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
-          <button onclick="index()" class="w-full bg-navy text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-900">دخول</button>
-        </div>
-        <p class="text-center mt-6 text-gray-600">
-          ما عندك حساب؟ 
-          <button onclick="showSignup()" class="text-navy font-bold">سجل الآن</button>
-        </p>
-      </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const SUPABASE_URL = 'https://jgekcfwacinmxkylrdpm.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZWtjZndhY2lubXhreWxyZHBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTQxNTYsImV4cCI6MjA5NDI3MDE1Nn0._RA5UoWuUyPM0G4aGd9m2LOcsaEiMan2-Lvx60Cnf4Y';
+            
+            const { createClient } = supabase;
+            const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-      <!-- تسجيل جديد -->
-      <div id="signupForm" class="hidden">
-        <h2 class="text-2xl font-bold text-navy mb-6 text-center">حساب جديد</h2>
-        <div class="space-y-4">
-          <input id="storeName" type="text" placeholder="اسم المتجر" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
-          <input id="signupEmail" type="email" placeholder="البريد الإلكتروني" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
-          <input id="signupPassword" type="password" placeholder="كلمة المرور" class="w-full p-3 border-2 rounded-lg focus:border-navy outline-none">
-          <button onclick="signup()" class="w-full bg-gold text-navy py-3 rounded-lg font-bold text-lg hover:opacity-90">إنشاء حساب ومتجر</button>
-        </div>
-        <p class="text-center mt-6 text-gray-600">
-          عندك حساب؟ 
-          <button onclick="showLogin()" class="text-navy font-bold">سجل دخول</button>
-        </p>
-      </div>
+            const loginForm = document.getElementById('loginForm');
+            const signupForm = document.getElementById('signupForm');
+            const messageDiv = document.getElementById('message');
 
-      <div id="msg" class="text-center mt-4 font-bold"></div>
-    </div>
-  </div>
+            document.getElementById('loginTab').onclick = () => {
+                loginForm.classList.remove('hidden');
+                signupForm.classList.add('hidden');
+                hideMessage();
+            };
 
-<script type="module">
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+            document.getElementById('signupTab').onclick = () => {
+                signupForm.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+                hideMessage();
+            };
 
-  const supabase = createClient(
-    'https://eeiegignudoedrlkuaqn.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlaWVnaWdudWRvZWRybGt1YXFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODUwNzMsImV4cCI6MjA5MzA2MTA3M30.gtqh1KbGmXZ9VBkmpFCYtJetn1ZXPHcp5oX9sENBb2Q'
-  )
+            loginForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('loginEmail').value.trim();
+                const password = document.getElementById('loginPassword').value;
+                
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                
+                if (error) {
+                    showMessage(error.message, 'error');
+                } else {
+                    showMessage('تم تسجيل الدخول بنجاح!', 'success');
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1000);
+                }
+            };
 
-  function showMsg(text, type = 'info') {
-    const msg = document.getElementById('msg');
-    msg.textContent = text;
-    if (type === 'error') {
-      msg.className = 'text-center mt-4 font-bold text-red-600';
-    } else if (type === 'success') {
-      msg.className = 'text-center mt-4 font-bold text-green-600';
-    } else {
-      msg.className = 'text-center mt-4 font-bold text-blue-600';
-    }
-  }
+            signupForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('signupEmail').value.trim();
+                const password = document.getElementById('signupPassword').value;
+                
+                const { data, error } = await supabaseClient.auth.signUp({ email, password });
+                console.log('Signup Response:', { data, error });
+                
+                if (error) showMessage(error.message, 'error');
+                else showMessage('تم إنشاء الحساب! ' + (data.user?.identities?.length === 0 ? 'الإيميل موجود مسبقاً' : 'تفقد بريدك للتأكيد'), 'success');
+            };
 
-  window.showSignup = function() {
-    document.getElementById('loginForm').classList.add('hidden');
-    document.getElementById('signupForm').classList.remove('hidden');
-    document.getElementById('msg').textContent = '';
-  }
+            function showMessage(msg, type) {
+                messageDiv.classList.remove('hidden');
+                messageDiv.textContent = msg;
+                messageDiv.className = `mb-4 p-3 rounded-lg text-sm ${
+                    type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                }`;
+            }
 
-  window.showLogin = function() {
-    document.getElementById('signupForm').classList.add('hidden');
-    document.getElementById('loginForm').classList.remove('hidden');
-    document.getElementById('msg').textContent = '';
-  }
-
-  window.index = async function() {
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value.trim();
-
-    if (!email || !password) {
-      showMsg('عبي الإيميل وكلمة المرور', 'error');
-      return;
-    }
-
-    showMsg('جاري تسجيل الدخول...', 'info');
-
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      showMsg('خطأ: ' + error.message, 'error');
-    } else {
-      showMsg('تم تسجيل الدخول بنجاح ✅', 'success');
-      setTimeout(() => window.location.href = 'dashboard.html', 1000);
-    }
-  }
-
-  window.signup = async function() {
-    const storeName = document.getElementById('storeName').value.trim();
-    const email = document.getElementById('signupEmail').value.trim();
-    const password = document.getElementById('signupPassword').value.trim();
-
-    if (!storeName || !email || !password) {
-      showMsg('عبي كل الحقول', 'error');
-      return;
-    }
-
-    if (password.length < 6) {
-      showMsg('كلمة المرور لازم 6 أحرف على الأقل', 'error');
-      return;
-    }
-
-    showMsg('جاري إنشاء الحساب والمتجر...', 'info');
-
-    // 1. نسجل المستخدم
-    const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
-
-    if (authError) {
-      showMsg('خطأ في التسجيل: ' + authError.message, 'error');
-      return;
-    }
-
-    if (!authData.user) {
-      showMsg('تم إرسال رابط التفعيل لإيميلك. فعّل الحساب وسجل دخول', 'info');
-      return;
-    }
-
-    // 2. ننشئ المتجر تلقائي بنفس الـ user_id
-    const { error: storeError } = await supabase
-    .from('stores')
-    .insert({
-        user_id: authData.user.id,
-        store_name: storeName  // ← هنا التعديل المهم
-      });
-
-    if (storeError) {
-      showMsg('تم إنشاء الحساب لكن فشل إنشاء المتجر: ' + storeError.message, 'error');
-      return;
-    }
-
-    showMsg('تم إنشاء الحساب والمتجر بنجاح ✅', 'success');
-    setTimeout(() => window.location.href = 'dashboard.html', 1500);
-  }
-
-  // لو المستخدم مسجل دخول، حوله مباشرة
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    if (session) window.location.href = 'dashboard.html';
-  });
-</script>
+            function hideMessage() {
+                messageDiv.classList.add('hidden');
+            }
+        });
+    </script>
 </body>
 </html>
