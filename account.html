@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حسابي - بيانات المنشأة</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>body { font-family: 'Cairo', sans-serif; }</style>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen p-6">
+        <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-lg p-8">
+            
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold text-gray-800">بيانات المنشأة</h1>
+                <a href="dashboard.html" class="text-blue-600 hover:underline">رجوع</a>
+            </div>
+
+            <form id="accountForm" class="space-y-4">
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">الاسم التجاري</label>
+                    <input type="text" id="business_name" required 
+                           class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">الرقم الضريبي VAT</label>
+                    <input type="text" id="vat_number" maxlength="15" pattern="[0-9]{15}" required
+                           placeholder="300000003"
+                           class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500">
+                    <p class="text-xs text-gray-500 mt-1">15 رقم بدون مسافات</p>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">السجل التجاري CR</label>
+                    <input type="text" id="cr_number" required
+                           class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">العنوان الوطني</label>
+                    <textarea id="address" rows="3" required
+                              class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">المدينة</label>
+                        <input type="text" id="city" required
+                               class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">الرمز البريدي</label>
+                        <input type="text" id="postal_code" pattern="[0-9]{5}" required
+                               class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">رقم الجوال</label>
+                    <input type="tel" id="phone" pattern="05[0-9]{8}" required
+                           placeholder="05xxxxxxxx"
+                           class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500">
+                </div>
+
+                <button type="submit" 
+                        class="w-full bg-orange-600 text-white py-3 rounded-lg text-lg font-semibold hover:bg-orange-700 transition">
+                    حفظ البيانات
+                </button>
+
+                <div id="message" class="hidden text-center p-3 rounded-lg"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+         const SUPABASE_URL = 'https://jgekcfwacinmxkylrdpm.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZWtjZndhY2lubXhreWxyZHBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTQxNTYsImV4cCI6MjA5NDI3MDE1Nn0._RA5UoWuUyPM0G4aGd9m2LOcsaEiMan2-Lvx60Cnf4Y';
+            
+        
+        // غيّرت الاسم هنا عشان ما يتعارض
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let userId = null;
+
+        async function loadProfile() {
+            const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+            if (authError || !user) {
+                window.location.href = 'login.html';
+                return;
+            }
+            userId = user.id;
+
+            const { data } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .single();
+
+            if (data) {
+                document.getElementById('business_name').value = data.business_name || '';
+                document.getElementById('vat_number').value = data.vat_number || '';
+                document.getElementById('cr_number').value = data.cr_number || '';
+                document.getElementById('address').value = data.address || '';
+                document.getElementById('city').value = data.city || '';
+                document.getElementById('postal_code').value = data.postal_code || '';
+                document.getElementById('phone').value = data.phone || '';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadProfile);
+
+        document.getElementById('accountForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = {
+                id: userId,
+                business_name: document.getElementById('business_name').value,
+                vat_number: document.getElementById('vat_number').value,
+                cr_number: document.getElementById('cr_number').value,
+                address: document.getElementById('address').value,
+                city: document.getElementById('city').value,
+                postal_code: document.getElementById('postal_code').value,
+                phone: document.getElementById('phone').value,
+                updated_at: new Date().toISOString()
+            };
+
+            const { error } = await supabaseClient
+                .from('profiles')
+                .upsert(formData, { onConflict: 'id' });
+            
+            const msg = document.getElementById('message');
+            if (error) {
+                msg.className = 'block text-center p-3 rounded-lg bg-red-100 text-red-700';
+                msg.textContent = 'حدث خطأ أثناء الحفظ: ' + error.message;
+            } else {
+                msg.className = 'block text-center p-3 rounded-lg bg-green-100 text-green-700';
+                msg.textContent = 'تم حفظ البيانات بنجاح';
+                setTimeout(() => msg.classList.add('hidden'), 3000);
+            }
+        });
+    </script>
+</body>
+</html>
