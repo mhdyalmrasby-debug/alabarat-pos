@@ -8,446 +8,1045 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
-        body { font-family: 'Cairo', sans-serif; }
-        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #818cf8;
+            --primary-dark: #3730a3;
+            --accent: #f59e0b;
+            --danger: #ef4444;
+            --success: #10b981;
+            --surface: #ffffff;
+            --bg: #f1f5f9;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Toast */
+        #toast {
+            position: fixed;
+            top: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(-120%);
+            background: var(--text);
+            color: #fff;
+            padding: 0.75rem 1.75rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            z-index: 9999;
+            transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+            white-space: nowrap;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+        }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+        #toast.success { background: var(--success); }
+        #toast.error { background: var(--danger); }
+
+        /* Header */
+        .page-header {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 60%, var(--primary-light) 100%);
+            padding: 1.5rem 2rem;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(79,70,229,0.3);
+        }
+
+        /* Stats */
+        .stat-card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            border: 1px solid var(--border);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 80px; height: 80px;
+            border-radius: 0 16px 0 80px;
+            opacity: 0.08;
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
+        .stat-card .label { font-size: 0.78rem; color: var(--muted); font-weight: 500; margin-bottom: 0.25rem; }
+        .stat-card .value { font-size: 1.75rem; font-weight: 800; line-height: 1; }
+
+        /* Form card */
+        .form-card {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 1.75rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+
+        /* Input styles */
+        .field-group { position: relative; }
+        .field-group label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--muted);
+            margin-bottom: 0.35rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .field-group input,
+        .field-group textarea,
+        .field-group select {
+            width: 100%;
+            padding: 0.65rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.9rem;
+            color: var(--text);
+            background: #f8fafc;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        .field-group input:focus,
+        .field-group textarea:focus {
+            border-color: var(--primary);
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(79,70,229,0.08);
+        }
+        .field-group input::placeholder { color: #c0c8d8; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.65rem 1.4rem;
+            border-radius: 10px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); box-shadow: 0 4px 15px rgba(79,70,229,0.35); transform: translateY(-1px); }
+        .btn-secondary { background: #f1f5f9; color: var(--text); }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-danger { background: #fff5f5; color: var(--danger); border: 1.5px solid #fecaca; }
+        .btn-danger:hover { background: var(--danger); color: white; }
+        .btn-success { background: #ecfdf5; color: var(--success); border: 1.5px solid #a7f3d0; }
+        .btn-success:hover { background: var(--success); color: white; }
+        .btn-ghost { background: transparent; color: var(--muted); }
+        .btn-ghost:hover { background: #f1f5f9; color: var(--text); }
+
+        /* Product card */
+        .product-card {
+            background: var(--surface);
+            border-radius: 18px;
+            border: 2px solid var(--border);
+            overflow: hidden;
+            transition: all 0.25s cubic-bezier(0.34,1.2,0.64,1);
+            position: relative;
+        }
+        .product-card:hover {
+            border-color: var(--primary-light);
+            box-shadow: 0 12px 35px rgba(79,70,229,0.12);
+            transform: translateY(-3px);
+        }
+        .product-card.expired { border-color: #fca5a5; background: #fffafa; }
+        .product-card.expiring { border-color: #fcd34d; background: #fffef0; }
+        .product-card.outofstock { opacity: 0.75; }
+
+        .card-image {
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .card-image .icon-wrap {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(6px);
+        }
+
+        .product-name {
+            font-weight: 800;
+            font-size: 1rem;
+            color: var(--text);
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
+            padding: 0.18rem 0.6rem;
+            border-radius: 50px;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+        .badge-red { background: #fff5f5; color: var(--danger); border: 1px solid #fecaca; }
+        .badge-orange { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
+        .badge-green { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+        .badge-blue { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+        .badge-gray { background: #f8fafc; color: var(--muted); border: 1px solid var(--border); }
+
+        /* Price row */
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.35rem 0;
+            font-size: 0.83rem;
+        }
+        .price-row .price-label { color: var(--muted); }
+        .price-row .price-value { font-weight: 700; }
+
+        /* Divider */
+        .divider { border: none; border-top: 1.5px dashed var(--border); margin: 0.6rem 0; }
+
+        /* Profit bar */
+        .profit-bar-bg {
+            height: 5px;
+            background: #e2e8f0;
+            border-radius: 99px;
+            overflow: hidden;
+            margin-top: 0.4rem;
+        }
+        .profit-bar-fill {
+            height: 100%;
+            border-radius: 99px;
+            background: linear-gradient(90deg, var(--success), #34d399);
+            transition: width 0.6s ease;
+        }
+
+        /* Search bar */
+        .search-bar {
+            background: var(--surface);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 1rem 1.25rem;
+        }
+        .search-wrap { position: relative; }
+        .search-wrap input {
+            width: 100%;
+            padding: 0.7rem 1rem 0.7rem 3rem;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.9rem;
+            background: #f8fafc;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .search-wrap input:focus {
+            border-color: var(--primary);
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(79,70,229,0.08);
+        }
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+        }
+
+        /* Filter pills */
+        .filter-pill {
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            border: 2px solid var(--border);
+            background: transparent;
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.18s;
+            white-space: nowrap;
+        }
+        .filter-pill:hover { border-color: var(--primary-light); color: var(--primary); }
+        .filter-pill.active { background: var(--primary); border-color: var(--primary); color: white; }
+
+        /* Alert */
+        .alert {
+            border-radius: 14px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+        .alert-orange { background: #fff7ed; border: 1.5px solid #fed7aa; }
+        .alert-red { background: #fff5f5; border: 1.5px solid #fecaca; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,0.55);
+            backdrop-filter: blur(4px);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-box {
+            background: var(--surface);
+            border-radius: 24px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 520px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.2);
+            animation: modalIn 0.3s cubic-bezier(0.34,1.2,0.64,1);
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.92) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* Empty state */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        /* Skeleton loader */
+        .skeleton {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s infinite;
+            border-radius: 8px;
+        }
+        @keyframes shimmer { to { background-position: -200% 0; } }
+
+        /* Grid */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.25rem;
+        }
+
+        /* Barcode font visual */
+        .barcode-text {
+            font-size: 0.7rem;
+            color: var(--muted);
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.3rem 0.6rem;
+            letter-spacing: 0.1em;
+            font-family: monospace;
+        }
+
+        /* Qty selector */
+        .qty-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .qty-btn {
+            width: 30px; height: 30px;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            background: #f8fafc;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+            flex-shrink: 0;
+            color: var(--text);
+        }
+        .qty-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+        .qty-input {
+            width: 60px !important;
+            text-align: center;
+            border: 2px solid var(--border) !important;
+            border-radius: 8px !important;
+            padding: 0.3rem !important;
+            font-weight: 700 !important;
+            background: #f8fafc !important;
+        }
+
+        /* Section heading */
+        .section-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 2px;
+            background: linear-gradient(to left, transparent, var(--border));
+        }
+
+        @media (max-width: 640px) {
+            .page-header { padding: 1rem; }
+            .products-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
-<body class="bg-gray-50">
-    <div class="max-w-6xl mx-auto p-6">
-        
-        <!-- الهيدر مع زر الرجوع -->
-        <div class="bg-white rounded-xl shadow p-6 mb-6">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-2xl font-bold">إدارة المنتجات</h1>
-                    <p class="text-gray-500 text-sm">مرحباً <span id="userEmail"></span></p>
-                </div>
-                <div class="flex gap-3">
-                    <a href="dashboard.html" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
-                        ← الرجوع للوحة التحكم
-                    </a>
-                    <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">
-                        تسجيل خروج
-                    </button>
-                </div>
-            </div>
+<body>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Header -->
+<div class="page-header">
+    <div class="max-w-6xl mx-auto flex justify-between items-center flex-wrap gap-3">
+        <div>
+            <h1 class="text-xl font-black tracking-wide">📦 إدارة المنتجات</h1>
+            <p class="text-indigo-200 text-sm mt-0.5" id="userEmail">جاري التحميل...</p>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+            <a href="dashboard.html" class="btn btn-ghost text-white border border-white/30 hover:bg-white/10">
+                ← لوحة التحكم
+            </a>
+            <button id="logoutBtn" class="btn" style="background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)">
+                خروج
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-6xl mx-auto p-4 md:p-6 space-y-5">
+
+    <!-- Alerts -->
+    <div id="alertsContainer"></div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div class="stat-card" style="--c:#4f46e5">
+            <div class="label">إجمالي المنتجات</div>
+            <div class="value" id="totalProducts" style="color:#4f46e5">—</div>
+            <div style="position:absolute;top:0;right:0;width:80px;height:80px;border-radius:0 16px 0 80px;background:#4f46e5;opacity:0.06"></div>
+        </div>
+        <div class="stat-card">
+            <div class="label">إجمالي الكمية</div>
+            <div class="value" id="totalQty" style="color:#7c3aed">—</div>
+            <div style="position:absolute;top:0;right:0;width:80px;height:80px;border-radius:0 16px 0 80px;background:#7c3aed;opacity:0.06"></div>
+        </div>
+        <div class="stat-card">
+            <div class="label">المبيعات المتوقعة</div>
+            <div class="value text-xl" id="totalValue" style="color:#059669">—</div>
+            <div style="position:absolute;top:0;right:0;width:80px;height:80px;border-radius:0 16px 0 80px;background:#059669;opacity:0.06"></div>
+        </div>
+        <div class="stat-card">
+            <div class="label">إجمالي التكلفة</div>
+            <div class="value text-xl" id="totalCost" style="color:#dc2626">—</div>
+            <div style="position:absolute;top:0;right:0;width:80px;height:80px;border-radius:0 16px 0 80px;background:#dc2626;opacity:0.06"></div>
+        </div>
+        <div class="stat-card">
+            <div class="label">قريبة الانتهاء</div>
+            <div class="value" id="expiringSoon" style="color:#ea580c">—</div>
+            <div style="position:absolute;top:0;right:0;width:80px;height:80px;border-radius:0 16px 0 80px;background:#ea580c;opacity:0.06"></div>
+        </div>
+    </div>
+
+    <!-- Add Product Form -->
+    <div class="form-card">
+        <div class="section-title mb-5">
+            <span>➕</span> إضافة منتج جديد
         </div>
 
-        <!-- تنبيهات -->
-        <div id="alertsContainer"></div>
+        <div id="formMsg" class="hidden mb-4 p-3 rounded-xl text-sm font-semibold"></div>
 
-        <!-- الإحصائيات -->
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-            <div class="bg-white rounded-xl shadow p-5">
-                <p class="text-gray-500 text-sm">إجمالي المنتجات</p>
-                <p id="totalProducts" class="text-3xl font-bold text-indigo-600">0</p>
-            </div>
-            <div class="bg-white rounded-xl shadow p-5">
-                <p class="text-gray-500 text-sm">إجمالي الكمية</p>
-                <p id="totalQty" class="text-3xl font-bold text-purple-600">0</p>
-            </div>
-            <div class="bg-white rounded-xl shadow p-5">
-                <p class="text-gray-500 text-sm">إجمالي المبيعات المتوقعة</p>
-                <p id="totalValue" class="text-3xl font-bold text-green-600">0 ريال</p>
-            </div>
-            <div class="bg-white rounded-xl shadow p-5">
-                <p class="text-gray-500 text-sm">إجمالي التكلفة</p>
-                <p id="totalCost" class="text-3xl font-bold text-red-600">0 ريال</p>
-            </div>
-            <div class="bg-white rounded-xl shadow p-5">
-                <p class="text-gray-500 text-sm">قريبة الانتهاء</p>
-                <p id="expiringSoon" class="text-3xl font-bold text-orange-600">0</p>
-            </div>
-        </div>
-
-        <!-- فورم إضافة منتج -->
-        <div class="bg-white rounded-xl shadow p-6 mb-6">
-            <h2 class="text-xl font-bold mb-4">إضافة منتج جديد</h2>
-            <div id="message" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
-            
-            <form id="addProductForm">
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <input type="text" id="productName" placeholder="اسم المنتج" required class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500">
-                    <input type="number" id="productPrice" placeholder="سعر البيع" required step="0.01" min="0" class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500">
-                    <input type="number" id="productCost" placeholder="سعر الشراء" step="0.01" min="0" value="0" class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500">
-                    <input type="number" id="productQty" placeholder="الكمية" min="0" value="1" class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500">
-                    <input type="text" id="productBarcode" placeholder="الباركود" class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+        <form id="addProductForm">
+            <!-- Row 1 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div class="field-group md:col-span-1">
+                    <label>اسم المنتج *</label>
+                    <input type="text" id="productName" placeholder="مثال: حليب نادك 1 لتر" required>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <input type="date" id="productExpiry" class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500">
-                    <textarea id="productDesc" placeholder="الوصف" rows="1" class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"></textarea>
+                <div class="field-group">
+                    <label>سعر البيع (ريال) *</label>
+                    <input type="number" id="productPrice" placeholder="0.00" required step="0.01" min="0">
                 </div>
-                <button type="submit" class="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700">إضافة المنتج</button>
-            </form>
-        </div>
+                <div class="field-group">
+                    <label>سعر الشراء (ريال)</label>
+                    <input type="number" id="productCost" placeholder="0.00" step="0.01" min="0" value="">
+                </div>
+            </div>
 
-        <!-- شريط البحث والفلترة والتصدير -->
-        <div class="bg-white rounded-xl shadow p-4 mb-6">
-            <div class="flex flex-col md:flex-row gap-3">
-                <input type="text" id="searchInput" placeholder="ابحث عن منتج أو باركود..." class="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500">
-                <select id="filterSelect" class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500">
-                    <option value="all">كل المنتجات</option>
-                    <option value="expiring">قريبة الانتهاء</option>
-                    <option value="expired">منتهية</option>
-                    <option value="valid">صالحة</option>
-                    <option value="outofstock">نفدت الكمية</option>
-                </select>
-                <button onclick="exportToExcel()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
-                    تصدير Excel
+            <!-- Row 2 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div class="field-group">
+                    <label>الكمية</label>
+                    <div class="qty-controls">
+                        <button type="button" class="qty-btn" onclick="changeQty('productQty', -1)">−</button>
+                        <input type="number" id="productQty" class="qty-input" min="0" value="1">
+                        <button type="button" class="qty-btn" onclick="changeQty('productQty', 1)">+</button>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>الباركود</label>
+                    <input type="text" id="productBarcode" placeholder="أدخل أو امسح الباركود">
+                </div>
+                <div class="field-group">
+                    <label>تاريخ الانتهاء</label>
+                    <input type="date" id="productExpiry">
+                </div>
+            </div>
+
+            <!-- Row 3 -->
+            <div class="field-group mb-4">
+                <label>الوصف (اختياري)</label>
+                <textarea id="productDesc" placeholder="وصف إضافي للمنتج..." rows="2" style="resize:none"></textarea>
+            </div>
+
+            <div class="flex gap-3 flex-wrap">
+                <button type="submit" class="btn btn-primary">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                    إضافة المنتج
                 </button>
+                <button type="button" onclick="document.getElementById('addProductForm').reset()" class="btn btn-secondary">مسح الحقول</button>
             </div>
+        </form>
+    </div>
+
+    <!-- Search & Filter -->
+    <div class="search-bar">
+        <div class="flex flex-col md:flex-row gap-3 items-center">
+            <div class="search-wrap flex-1 w-full">
+                <svg class="search-icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <input type="text" id="searchInput" placeholder="ابحث باسم المنتج أو الباركود...">
+            </div>
+            <button onclick="exportToExcel()" class="btn btn-success flex-shrink-0">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M12 16L6 10h4V4h4v6h4l-6 6z"/><path d="M4 20h16" stroke-linecap="round"/>
+                </svg>
+                تصدير Excel
+            </button>
         </div>
 
-        <!-- قائمة المنتجات -->
-        <div class="bg-white rounded-xl shadow p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold">منتجاتك</h2>
-                <span id="productCount" class="text-sm text-gray-500">0 منتج</span>
-            </div>
-            <div id="productsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+        <!-- Filter Pills -->
+        <div class="flex gap-2 mt-3 overflow-x-auto pb-1">
+            <button class="filter-pill active" data-filter="all">الكل</button>
+            <button class="filter-pill" data-filter="valid">✅ صالحة</button>
+            <button class="filter-pill" data-filter="expiring">⚠️ تنتهي قريباً</button>
+            <button class="filter-pill" data-filter="expired">❌ منتهية</button>
+            <button class="filter-pill" data-filter="outofstock">📭 نفدت الكمية</button>
         </div>
     </div>
 
-    <!-- مودال التعديل -->
-    <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl max-w-md w-full p-6">
-            <h3 class="text-xl font-bold mb-4">تعديل المنتج</h3>
-            <form id="editProductForm">
-                <input type="hidden" id="editProductId">
-                <div class="space-y-3">
-                    <input type="text" id="editProductName" required class="w-full px-4 py-2 border rounded-lg" placeholder="اسم المنتج">
-                    <input type="number" id="editProductPrice" required step="0.01" class="w-full px-4 py-2 border rounded-lg" placeholder="سعر البيع">
-                    <input type="number" id="editProductCost" step="0.01" class="w-full px-4 py-2 border rounded-lg" placeholder="سعر الشراء">
-                    <input type="number" id="editProductQty" min="0" class="w-full px-4 py-2 border rounded-lg" placeholder="الكمية">
-                    <input type="text" id="editProductBarcode" class="w-full px-4 py-2 border rounded-lg" placeholder="الباركود">
-                    <input type="date" id="editProductExpiry" class="w-full px-4 py-2 border rounded-lg">
-                    <textarea id="editProductDesc" rows="2" class="w-full px-4 py-2 border rounded-lg" placeholder="الوصف"></textarea>
-                </div>
-                <div class="flex gap-3 mt-6">
-                    <button type="submit" class="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700">حفظ</button>
-                    <button type="button" onclick="closeEditModal()" class="flex-1 bg-gray-200 py-2 rounded-lg hover:bg-gray-300">إلغاء</button>
-                </div>
-            </form>
+    <!-- Products List -->
+    <div>
+        <div class="flex justify-between items-center mb-4">
+            <div class="section-title"><span>🗂️</span> قائمة المنتجات</div>
+            <span id="productCount" class="badge badge-blue">— منتج</span>
+        </div>
+
+        <div id="productsList" class="products-grid">
+            <!-- skeleton -->
+            <div class="product-card p-4 space-y-3">
+                <div class="skeleton h-24 w-full rounded-xl"></div>
+                <div class="skeleton h-4 w-3/4"></div>
+                <div class="skeleton h-4 w-1/2"></div>
+                <div class="skeleton h-8 w-full"></div>
+            </div>
         </div>
     </div>
+</div>
 
-    <script>
-        const SUPABASE_URL = 'https://jgekcfwacinmxkylrdpm.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZWtjZndhY2lubXhreWxyZHBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTQxNTYsImV4cCI6MjA5NDI3MDE1Nn0._RA5UoWuUyPM0G4aGd9m2LOcsaEiMan2-Lvx60Cnf4Y';
-        const { createClient } = supabase;
-        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+<!-- Edit Modal -->
+<div id="editModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="flex justify-between items-center mb-5">
+            <h3 class="text-lg font-black">✏️ تعديل المنتج</h3>
+            <button onclick="closeEditModal()" class="btn btn-ghost" style="padding:0.4rem">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
 
-        let currentUser = null;
-        let allProducts = [];
-        let filteredProducts = [];
-        const messageDiv = document.getElementById('message');
+        <form id="editProductForm" class="space-y-3">
+            <input type="hidden" id="editProductId">
+            <div class="grid grid-cols-2 gap-3">
+                <div class="field-group col-span-2">
+                    <label>اسم المنتج *</label>
+                    <input type="text" id="editProductName" required placeholder="اسم المنتج">
+                </div>
+                <div class="field-group">
+                    <label>سعر البيع *</label>
+                    <input type="number" id="editProductPrice" required step="0.01" placeholder="0.00">
+                </div>
+                <div class="field-group">
+                    <label>سعر الشراء</label>
+                    <input type="number" id="editProductCost" step="0.01" placeholder="0.00">
+                </div>
+                <div class="field-group">
+                    <label>الكمية</label>
+                    <div class="qty-controls">
+                        <button type="button" class="qty-btn" onclick="changeQty('editProductQty', -1)">−</button>
+                        <input type="number" id="editProductQty" class="qty-input" min="0">
+                        <button type="button" class="qty-btn" onclick="changeQty('editProductQty', 1)">+</button>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>الباركود</label>
+                    <input type="text" id="editProductBarcode" placeholder="الباركود">
+                </div>
+                <div class="field-group col-span-2">
+                    <label>تاريخ الانتهاء</label>
+                    <input type="date" id="editProductExpiry">
+                </div>
+                <div class="field-group col-span-2">
+                    <label>الوصف</label>
+                    <textarea id="editProductDesc" rows="2" placeholder="الوصف" style="resize:none"></textarea>
+                </div>
+            </div>
 
-        // تحقق من المستخدم
-        supabaseClient.auth.getUser().then(({ data: { user } }) => {
-            if (!user) window.location.href = 'index.html';
-            else {
-                currentUser = user;
-                document.getElementById('userEmail').textContent = user.email;
-                loadProducts();
-            }
-        });
+            <!-- Live profit preview -->
+            <div id="editProfitPreview" class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm hidden">
+                <div class="flex justify-between">
+                    <span class="text-slate-500">هامش الربح:</span>
+                    <span id="editProfitMargin" class="font-bold text-emerald-600"></span>
+                </div>
+            </div>
 
-        document.getElementById('addProductForm').onsubmit = async (e) => {
+            <div class="flex gap-3 pt-2">
+                <button type="submit" class="btn btn-primary flex-1">حفظ التعديلات</button>
+                <button type="button" onclick="closeEditModal()" class="btn btn-secondary flex-1">إلغاء</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://jgekcfwacinmxkylrdpm.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZWtjZndhY2lubXhreWxyZHBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTQxNTYsImV4cCI6MjA5NDI3MDE1Nn0._RA5UoWuUyPM0G4aGd9m2LOcsaEiMan2-Lvx60Cnf4Y';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let allProducts = [];
+let filteredProducts = [];
+let activeFilter = 'all';
+
+// ─── Auth ─────────────────────────────────────
+sb.auth.getUser().then(({ data: { user } }) => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    currentUser = user;
+    document.getElementById('userEmail').textContent = user.email;
+    loadProducts();
+});
+
+document.getElementById('logoutBtn').onclick = async () => {
+    await sb.auth.signOut();
+    window.location.href = 'index.html';
+};
+
+// ─── Toast ────────────────────────────────────
+function toast(msg, type = 'success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `show ${type}`;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.className = '', 3000);
+}
+
+// ─── Qty Controls ─────────────────────────────
+function changeQty(inputId, delta) {
+    const el = document.getElementById(inputId);
+    const val = Math.max(0, (parseInt(el.value) || 0) + delta);
+    el.value = val;
+}
+
+// ─── Add Product ──────────────────────────────
+document.getElementById('addProductForm').onsubmit = async (e) => {
     e.preventDefault();
+    const btn = e.submitter;
+    btn.disabled = true;
+    btn.textContent = 'جاري الإضافة...';
 
     const barcodeVal = document.getElementById('productBarcode').value.trim();
 
-    const { error } = await supabaseClient.from('products').insert([{
+    const { error } = await sb.from('products').insert([{
         user_id: currentUser.id,
-        name: document.getElementById('productName').value,
-        price: document.getElementById('productPrice').value ? parseFloat(document.getElementById('productPrice').value) : null,
-        cost_price: document.getElementById('productCost').value ? parseFloat(document.getElementById('productCost').value) : 0,
-        quantity: document.getElementById('productQty').value ? parseInt(document.getElementById('productQty').value) : 1,
-        barcode: barcodeVal ? barcodeVal : null,  // هنا التعديل
-        description: document.getElementById('productDesc').value || null,
+        name: document.getElementById('productName').value.trim(),
+        price: parseFloat(document.getElementById('productPrice').value) || 0,
+        cost_price: parseFloat(document.getElementById('productCost').value) || 0,
+        quantity: parseInt(document.getElementById('productQty').value) || 1,
+        barcode: barcodeVal || null,
+        description: document.getElementById('productDesc').value.trim() || null,
         expiry_date: document.getElementById('productExpiry').value || null
     }]);
 
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> إضافة المنتج`;
+
     if (error) {
-        console.log(error);
-        if (error.code === '23505') {
-            showMessage('هذا الباركود مستخدم من قبل، استخدم باركود ثاني', 'error');
-        } else {
-            showMessage(error.message, 'error');
-        }
+        toast(error.code === '23505' ? 'هذا الباركود مستخدم مسبقاً' : error.message, 'error');
     } else {
-        showMessage('تم إضافة المنتج بنجاح!', 'success');
+        toast('✅ تم إضافة المنتج بنجاح');
         document.getElementById('addProductForm').reset();
+        document.getElementById('productQty').value = 1;
         loadProducts();
     }
 };
 
-        // تحميل المنتجات
-        async function loadProducts() {
-            const { data, error } = await supabaseClient
-                .from('products')
-                .select('*')
-                .eq('user_id', currentUser.id)
-                .order('created_at', { ascending: false });
+// ─── Load Products ────────────────────────────
+async function loadProducts() {
+    const { data, error } = await sb.from('products')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
 
-            if (error) {
-                document.getElementById('productsList').innerHTML = '<p class="text-red-500">خطأ في التحميل</p>';
-                return;
+    if (error) { toast('خطأ في تحميل المنتجات', 'error'); return; }
+    allProducts = data || [];
+    updateStats();
+    showAlerts();
+    applyFilters();
+}
+
+// ─── Stats ────────────────────────────────────
+function updateStats() {
+    const today = new Date();
+    const totalQty = allProducts.reduce((s, p) => s + (p.quantity || 0), 0);
+    const totalVal = allProducts.reduce((s, p) => s + ((p.price || 0) * (p.quantity || 0)), 0);
+    const totalCost = allProducts.reduce((s, p) => s + ((p.cost_price || 0) * (p.quantity || 0)), 0);
+    const expSoon = allProducts.filter(p => {
+        if (!p.expiry_date) return false;
+        const d = (new Date(p.expiry_date) - today) / 86400000;
+        return d >= 0 && d <= 10;
+    }).length;
+
+    document.getElementById('totalProducts').textContent = allProducts.length;
+    document.getElementById('totalQty').textContent = totalQty;
+    document.getElementById('totalValue').textContent = fmt(totalVal);
+    document.getElementById('totalCost').textContent = fmt(totalCost);
+    document.getElementById('expiringSoon').textContent = expSoon;
+}
+
+function fmt(n) {
+    return n.toLocaleString('ar-SA', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ﷼';
+}
+
+// ─── Alerts ───────────────────────────────────
+function showAlerts() {
+    const today = new Date();
+    const expiring = allProducts.filter(p => {
+        if (!p.expiry_date) return false;
+        const d = (new Date(p.expiry_date) - today) / 86400000;
+        return d >= 0 && d <= 10;
+    });
+    const oos = allProducts.filter(p => (p.quantity || 0) === 0);
+
+    let html = '';
+    if (expiring.length)
+        html += `<div class="alert alert-orange">
+            <span style="font-size:1.3rem">⚠️</span>
+            <div><strong class="text-orange-800">منتجات قريبة الانتهاء</strong>
+            <p class="text-orange-700 text-sm mt-0.5">لديك <strong>${expiring.length}</strong> منتج ينتهي خلال 10 أيام: ${expiring.slice(0,3).map(p=>p.name).join('، ')}${expiring.length>3?'...':''}</p></div>
+        </div>`;
+    if (oos.length)
+        html += `<div class="alert alert-red">
+            <span style="font-size:1.3rem">📭</span>
+            <div><strong class="text-red-800">منتجات نفدت الكمية</strong>
+            <p class="text-red-700 text-sm mt-0.5">لديك <strong>${oos.length}</strong> منتج بكمية صفر</p></div>
+        </div>`;
+
+    document.getElementById('alertsContainer').innerHTML = html;
+}
+
+// ─── Filter Pills ─────────────────────────────
+document.querySelectorAll('.filter-pill').forEach(pill => {
+    pill.onclick = () => {
+        document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        activeFilter = pill.dataset.filter;
+        applyFilters();
+    };
+});
+
+document.getElementById('searchInput').oninput = applyFilters;
+
+function applyFilters() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const today = new Date();
+
+    filteredProducts = allProducts.filter(p => {
+        const matchQ = !q || p.name.toLowerCase().includes(q)
+            || (p.barcode && p.barcode.toLowerCase().includes(q))
+            || (p.description && p.description.toLowerCase().includes(q));
+        if (!matchQ) return false;
+
+        if (activeFilter === 'all') return true;
+        if (activeFilter === 'outofstock') return (p.quantity || 0) === 0;
+        if (!p.expiry_date) return activeFilter === 'valid';
+        const d = (new Date(p.expiry_date) - today) / 86400000;
+        if (activeFilter === 'expired') return d < 0;
+        if (activeFilter === 'expiring') return d >= 0 && d <= 10;
+        if (activeFilter === 'valid') return d > 10;
+        return true;
+    });
+
+    renderProducts();
+}
+
+// ─── Render Products ──────────────────────────
+function renderProducts() {
+    const list = document.getElementById('productsList');
+    document.getElementById('productCount').textContent = `${filteredProducts.length} منتج`;
+
+    if (filteredProducts.length === 0) {
+        list.innerHTML = `<div class="empty-state col-span-3">
+            <div style="font-size:3rem;margin-bottom:1rem">📦</div>
+            <p style="font-size:1.1rem;font-weight:700;color:#334155">لا توجد منتجات</p>
+            <p style="font-size:0.85rem;margin-top:0.25rem">جرب تغيير الفلتر أو أضف منتجاً جديداً</p>
+        </div>`;
+        return;
+    }
+
+    const today = new Date();
+    list.innerHTML = filteredProducts.map(p => {
+        const qty = parseInt(p.quantity || 0);
+        const price = parseFloat(p.price || 0);
+        const cost = parseFloat(p.cost_price || 0);
+        const profitUnit = price - cost;
+        const profitTotal = (profitUnit * qty).toFixed(2);
+        const profitPct = cost > 0 ? Math.round((profitUnit / cost) * 100) : 0;
+        const barPct = Math.min(100, Math.max(0, profitPct));
+
+        // Expiry badge
+        let expiryBadge = '';
+        let cardClass = '';
+        if (p.expiry_date) {
+            const days = Math.ceil((new Date(p.expiry_date) - today) / 86400000);
+            if (days < 0) {
+                expiryBadge = `<span class="badge badge-red">❌ منتهي</span>`;
+                cardClass = 'expired';
+            } else if (days <= 10) {
+                expiryBadge = `<span class="badge badge-orange">⏳ ${days} يوم</span>`;
+                cardClass = 'expiring';
+            } else {
+                expiryBadge = `<span class="badge badge-green">✅ ${p.expiry_date}</span>`;
             }
-
-            allProducts = data;
-            filteredProducts = data;
-            updateStats();
-            showAlerts();
-            renderProducts();
         }
 
-        // تحديث الإحصائيات
-        function updateStats() {
-            const total = allProducts.length;
-            const totalQty = allProducts.reduce((sum, p) => sum + parseInt(p.quantity || 0), 0);
-            const totalValue = allProducts.reduce((sum, p) => sum + (parseFloat(p.price || 0) * parseInt(p.quantity || 0)), 0);
-            const totalCost = allProducts.reduce((sum, p) => sum + (parseFloat(p.cost_price || 0) * parseInt(p.quantity || 0)), 0);
-            const today = new Date();
-            const expiringSoon = allProducts.filter(p => {
-                if (!p.expiry_date) return false;
-                const diffDays = (new Date(p.expiry_date) - today) / (1000 * 60 * 60 * 24);
-                return diffDays >= 0 && diffDays <= 10;
-            }).length;
+        // Qty badge
+        const qtyBadge = qty === 0
+            ? `<span class="badge badge-red">📭 نفدت</span>`
+            : qty <= 5
+            ? `<span class="badge badge-orange">⚠️ ${qty} متبقي</span>`
+            : `<span class="badge badge-blue">📦 ${qty}</span>`;
 
-            document.getElementById('totalProducts').textContent = total;
-            document.getElementById('totalQty').textContent = totalQty;
-            document.getElementById('totalValue').textContent = totalValue.toFixed(2) + ' ريال';
-            document.getElementById('totalCost').textContent = totalCost.toFixed(2) + ' ريال';
-            document.getElementById('expiringSoon').textContent = expiringSoon;
-        }
+        if (qty === 0) cardClass += ' outofstock';
 
-        // عرض التنبيهات
-        function showAlerts() {
-            const alertsContainer = document.getElementById('alertsContainer');
-            const today = new Date();
-            const expiring = allProducts.filter(p => {
-                if (!p.expiry_date) return false;
-                const diffDays = (new Date(p.expiry_date) - today) / (1000 * 60 * 60 * 24);
-                return diffDays >= 0 && diffDays <= 10;
-            });
+        // Background gradient per product
+        const gradients = [
+            'from-indigo-100 to-blue-100',
+            'from-purple-100 to-pink-100',
+            'from-emerald-100 to-teal-100',
+            'from-orange-100 to-yellow-100',
+            'from-sky-100 to-cyan-100',
+        ];
+        const grad = gradients[p.id % gradients.length];
 
-            const outOfStock = allProducts.filter(p => (p.quantity || 0) === 0);
+        return `
+        <div class="product-card ${cardClass}">
+            <div class="card-image bg-gradient-to-br ${grad}">
+                <div class="icon-wrap">
+                    <svg width="28" height="28" fill="none" stroke="#6366f1" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                    </svg>
+                </div>
+                ${qty === 0 ? `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.07);display:flex;align-items:center;justify-content:center"><span style="font-size:0.7rem;font-weight:700;color:#666;background:white;padding:0.2rem 0.5rem;border-radius:50px;opacity:0.9">نفدت الكمية</span></div>` : ''}
+            </div>
 
-            let alertsHtml = '';
-            if (expiring.length > 0) {
-                alertsHtml += `
-                <div class="bg-orange-50 border-orange-200 rounded-xl p-4 mb-4">
-                    <div class="flex items-start gap-3">
-                        <svg class="w-6 h-6 text-orange-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"></path>
-                        </svg>
-                        <div>
-                            <h3 class="font-bold text-orange-800">تنبيه: منتجات قريبة الانتهاء</h3>
-                            <p class="text-orange-700 text-sm mt-1">لديك ${expiring.length} منتج ينتهي خلال 10 أيام</p>
-                        </div>
+            <div class="p-4">
+                <div class="flex justify-between items-start gap-2 mb-2">
+                    <h3 class="product-name flex-1">${p.name}</h3>
+                    ${expiryBadge}
+                </div>
+
+                <div class="flex flex-wrap gap-1.5 mb-3">${qtyBadge}</div>
+
+                <!-- Prices -->
+                <div class="space-y-0.5 mb-2">
+                    <div class="price-row">
+                        <span class="price-label">سعر البيع</span>
+                        <span class="price-value" style="color:var(--primary)">${fmt(price)}</span>
                     </div>
-                </div>`;
-            }
-            if (outOfStock.length > 0) {
-                alertsHtml += `
-                <div class="bg-red-50 border-red-200 rounded-xl p-4 mb-4">
-                    <div class="flex items-start gap-3">
-                        <svg class="w-6 h-6 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <div>
-                            <h3 class="font-bold text-red-800">تنبيه: منتجات نفدت الكمية</h3>
-                            <p class="text-red-700 text-sm mt-1">لديك ${outOfStock.length} منتج الكمية صفر</p>
-                        </div>
-                    </div>
-                </div>`;
-            }
-            alertsContainer.innerHTML = alertsHtml;
-        }
-
-        // البحث والفلترة
-        document.getElementById('searchInput').oninput = applyFilters;
-        document.getElementById('filterSelect').onchange = applyFilters;
-
-        function applyFilters() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const filterType = document.getElementById('filterSelect').value;
-            const today = new Date();
-
-            filteredProducts = allProducts.filter(p => {
-                const matchesSearch = p.name.toLowerCase().includes(searchTerm) || 
-                                     (p.description && p.description.toLowerCase().includes(searchTerm)) ||
-                                     (p.barcode && p.barcode.toLowerCase().includes(searchTerm));
-                
-                if (!matchesSearch) return false;
-
-                if (filterType === 'all') return true;
-                if (filterType === 'outofstock') return (p.quantity || 0) === 0;
-                if (!p.expiry_date) return filterType === 'valid';
-                
-                const diffDays = (new Date(p.expiry_date) - today) / (1000 * 60 * 60 * 24);
-                if (filterType === 'expired') return diffDays < 0;
-                if (filterType === 'expiring') return diffDays >= 0 && diffDays <= 10;
-                if (filterType === 'valid') return diffDays > 10;
-                return true;
-            });
-
-            renderProducts();
-        }
-
-        // عرض المنتجات
-        function renderProducts() {
-            const listDiv = document.getElementById('productsList');
-            document.getElementById('productCount').textContent = `${filteredProducts.length} منتج`;
-
-            if (filteredProducts.length === 0) {
-                listDiv.innerHTML = `<div class="col-span-3 text-center py-12 bg-gray-50 rounded-lg"><p class="text-gray-500">لا توجد منتجات</p></div>`;
-                return;
-            }
-
-            const today = new Date();
-            listDiv.innerHTML = filteredProducts.map(p => {
-                let expiryBadge = '';
-                if (p.expiry_date) {
-                    const diffDays = Math.ceil((new Date(p.expiry_date) - today) / (1000 * 60 * 60 * 24));
-                    if (diffDays < 0) expiryBadge = `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs">منتهي</span>`;
-                    else if (diffDays <= 10) expiryBadge = `<span class="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs">باقي ${diffDays} يوم</span>`;
-                    else expiryBadge = `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs">${p.expiry_date}</span>`;
-                }
-
-                const qty = parseInt(p.quantity || 0);
-                const qtyBadge = qty === 0 
-                    ? `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs">نفدت الكمية</span>`
-                    : `<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">الكمية: ${qty}</span>`;
-
-                const profit = ((p.price - (p.cost_price || 0)) * qty).toFixed(2);
-                const profitPercent = p.cost_price > 0 ? (((p.price - p.cost_price) / p.cost_price) * 100).toFixed(0) : 0;
-
-                return `
-                <div class="border rounded-xl overflow-hidden hover:shadow-lg transition bg-white">
-                    <div class="h-32 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
-                        <svg class="w-10 h-10 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                        </svg>
-                    </div>
-                    <div class="p-4">
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-bold text-lg text-gray-800 line-clamp-1">${p.name}</h3>
-                            ${expiryBadge}
-                        </div>
-                        <div class="flex gap-2 mb-3">${qtyBadge}</div>
-                        <div class="space-y-1 mb-3">
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-500">سعر البيع:</span>
-                                <span class="font-bold text-indigo-600">${p.price} ريال</span>
-                            </div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-500">سعر الشراء:</span>
-                                <span class="text-red-600">${p.cost_price || 0} ريال</span>
-                            </div>
-                            <div class="flex justify-between text-sm border-t pt-1">
-                                <span class="text-gray-500">الربح الإجمالي:</span>
-                                <span class="font-bold text-green-600">${profit} ريال (${profitPercent}%)</span>
-                            </div>
-                        </div>
-                        ${p.barcode ? `<p class="text-xs text-gray-500 bg-gray-50 p-2 rounded">باركود: ${p.barcode}</p>` : ''}
-                        <div class="flex gap-2 mt-3">
-                            <button onclick="openEditModal(${p.id})" class="flex-1 bg-indigo-50 text-indigo-600 py-2 rounded-lg hover:bg-indigo-100 text-sm font-medium">تعديل</button>
-                            <button onclick="deleteProduct(${p.id})" class="flex-1 bg-red-50 text-red-600 py-2 rounded-lg hover:bg-red-100 text-sm font-medium">حذف</button>
-                        </div>
+                    <div class="price-row">
+                        <span class="price-label">سعر الشراء</span>
+                        <span class="price-value" style="color:var(--danger)">${fmt(cost)}</span>
                     </div>
                 </div>
-                `;
-            }).join('');
-        }
 
-        // تصدير Excel
-        function exportToExcel() {
-            if (filteredProducts.length === 0) return showMessage('لا توجد بيانات للتصدير', 'error');
-            
-            const data = filteredProducts.map(p => ({
-                'اسم المنتج': p.name,
-                'الكمية': p.quantity || 0,
-                'سعر البيع': p.price,
-                'سعر الشراء': p.cost_price,
-                'الربح الإجمالي': ((p.price - (p.cost_price || 0)) * (p.quantity || 0)).toFixed(2),
-                'الباركود': p.barcode || '',
-                'تاريخ الانتهاء': p.expiry_date || '',
-                'الوصف': p.description || ''
-            }));
+                <hr class="divider">
 
-            const ws = XLSX.utils.json_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'المنتجات');
-            XLSX.writeFile(wb, `منتجات_${new Date().toISOString().split('T')[0]}.xlsx`);
-            showMessage('تم تصدير الملف بنجاح!', 'success');
-        }
+                <div class="price-row">
+                    <span class="price-label">الربح الإجمالي</span>
+                    <span class="price-value" style="color:${parseFloat(profitTotal)>=0?'var(--success)':'var(--danger)'}">${parseFloat(profitTotal) >= 0 ? '+' : ''}${fmt(parseFloat(profitTotal))} (${profitPct}%)</span>
+                </div>
 
-        // مودال التعديل
-        function openEditModal(id) {
-            const product = allProducts.find(p => p.id === id);
-            document.getElementById('editProductId').value = product.id;
-            document.getElementById('editProductName').value = product.name;
-            document.getElementById('editProductPrice').value = product.price;
-            document.getElementById('editProductCost').value = product.cost_price || 0;
-            document.getElementById('editProductQty').value = product.quantity || 1;
-            document.getElementById('editProductBarcode').value = product.barcode || '';
-            document.getElementById('editProductExpiry').value = product.expiry_date || '';
-            document.getElementById('editProductDesc').value = product.description || '';
-            document.getElementById('editModal').classList.remove('hidden');
-        }
+                ${cost > 0 ? `<div class="profit-bar-bg"><div class="profit-bar-fill" style="width:${barPct}%"></div></div>` : ''}
 
-        function closeEditModal() {
-            document.getElementById('editModal').classList.add('hidden');
-        }
+                ${p.barcode ? `<div class="mt-2"><span class="barcode-text">▌▌▌ ${p.barcode}</span></div>` : ''}
+                ${p.description ? `<p class="text-xs text-slate-400 mt-1.5 line-clamp-1">📝 ${p.description}</p>` : ''}
 
-        document.getElementById('editProductForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('editProductId').value;
-            const { error } = await supabaseClient.from('products').update({
-                name: document.getElementById('editProductName').value,
-                price: document.getElementById('editProductPrice').value,
-                cost_price: document.getElementById('editProductCost').value || 0,
-                quantity: document.getElementById('editProductQty').value || 1,
-                barcode: document.getElementById('editProductBarcode').value || null,
-                description: document.getElementById('editProductDesc').value,
-                expiry_date: document.getElementById('editProductExpiry').value || null
-            }).eq('id', id).eq('user_id', currentUser.id);
+                <!-- Actions -->
+                <div class="flex gap-2 mt-3">
+                    <button onclick="openEditModal(${p.id})" class="btn btn-ghost flex-1" style="border:1.5px solid var(--border);font-size:0.82rem;padding:0.5rem">
+                        ✏️ تعديل
+                    </button>
+                    <button onclick="quickQtyUpdate(${p.id}, ${qty})" class="btn btn-ghost" style="border:1.5px solid var(--border);padding:0.5rem" title="تحديث الكمية">
+                        📦
+                    </button>
+                    <button onclick="deleteProduct(${p.id})" class="btn btn-danger" style="font-size:0.82rem;padding:0.5rem 0.75rem">
+                        🗑️
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
 
-            if (error) showMessage(error.message, 'error');
-            else {
-                showMessage('تم التحديث بنجاح!', 'success');
-                closeEditModal();
-                loadProducts();
-            }
-        };
+// ─── Quick Qty Update ─────────────────────────
+async function quickQtyUpdate(id, currentQty) {
+    const newQty = prompt(`تحديث الكمية للمنتج\nالكمية الحالية: ${currentQty}`, currentQty);
+    if (newQty === null || isNaN(parseInt(newQty))) return;
+    const { error } = await sb.from('products').update({ quantity: parseInt(newQty) }).eq('id', id).eq('user_id', currentUser.id);
+    if (error) toast(error.message, 'error');
+    else { toast('✅ تم تحديث الكمية'); loadProducts(); }
+}
 
-        // حذف منتج
-        async function deleteProduct(id) {
-            if (!confirm('متأكد تبي تحذف المنتج؟')) return;
-            const { error } = await supabaseClient.from('products').delete().eq('id', id).eq('user_id', currentUser.id);
-            if (error) showMessage(error.message, 'error');
-            else {
-                showMessage('تم الحذف', 'success');
-                loadProducts();
-            }
-        }
+// ─── Edit Modal ───────────────────────────────
+function openEditModal(id) {
+    const p = allProducts.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('editProductId').value = p.id;
+    document.getElementById('editProductName').value = p.name;
+    document.getElementById('editProductPrice').value = p.price || '';
+    document.getElementById('editProductCost').value = p.cost_price || '';
+    document.getElementById('editProductQty').value = p.quantity || 0;
+    document.getElementById('editProductBarcode').value = p.barcode || '';
+    document.getElementById('editProductExpiry').value = p.expiry_date || '';
+    document.getElementById('editProductDesc').value = p.description || '';
+    updateProfitPreview();
+    document.getElementById('editModal').classList.add('open');
+}
 
-        // تسجيل خروج
-        document.getElementById('logoutBtn').onclick = async () => {
-            await supabaseClient.auth.signOut();
-            window.location.href = 'index.html';
-        };
+function closeEditModal() {
+    document.getElementById('editModal').classList.remove('open');
+}
 
-        function showMessage(msg, type) {
-            messageDiv.classList.remove('hidden');
-            messageDiv.textContent = msg;
-            messageDiv.className = `mb-4 p-3 rounded-lg text-sm ${type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`;
-            setTimeout(() => messageDiv.classList.add('hidden'), 3000);
-        }
-    </script>
+// Close on backdrop click
+document.getElementById('editModal').onclick = (e) => {
+    if (e.target === document.getElementById('editModal')) closeEditModal();
+};
+
+// Live profit preview in edit modal
+['editProductPrice', 'editProductCost', 'editProductQty'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updateProfitPreview);
+});
+
+function updateProfitPreview() {
+    const price = parseFloat(document.getElementById('editProductPrice').value) || 0;
+    const cost = parseFloat(document.getElementById('editProductCost').value) || 0;
+    const qty = parseInt(document.getElementById('editProductQty').value) || 0;
+    const preview = document.getElementById('editProfitPreview');
+    if (cost > 0 && price > 0) {
+        const pct = Math.round(((price - cost) / cost) * 100);
+        const total = ((price - cost) * qty).toFixed(2);
+        document.getElementById('editProfitMargin').textContent = `${pct}% (${fmt(parseFloat(total))})`;
+        preview.classList.remove('hidden');
+    } else {
+        preview.classList.add('hidden');
+    }
+}
+
+document.getElementById('editProductForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const btn = e.submitter;
+    btn.disabled = true;
+    btn.textContent = 'جاري الحفظ...';
+
+    const id = document.getElementById('editProductId').value;
+    const { error } = await sb.from('products').update({
+        name: document.getElementById('editProductName').value.trim(),
+        price: parseFloat(document.getElementById('editProductPrice').value) || 0,
+        cost_price: parseFloat(document.getElementById('editProductCost').value) || 0,
+        quantity: parseInt(document.getElementById('editProductQty').value) || 0,
+        barcode: document.getElementById('editProductBarcode').value.trim() || null,
+        description: document.getElementById('editProductDesc').value.trim() || null,
+        expiry_date: document.getElementById('editProductExpiry').value || null
+    }).eq('id', id).eq('user_id', currentUser.id);
+
+    btn.disabled = false;
+    btn.textContent = 'حفظ التعديلات';
+
+    if (error) toast(error.message, 'error');
+    else { toast('✅ تم حفظ التعديلات'); closeEditModal(); loadProducts(); }
+};
+
+// ─── Delete ───────────────────────────────────
+async function deleteProduct(id) {
+    const p = allProducts.find(x => x.id === id);
+    if (!confirm(`هل تريد حذف "${p?.name || 'المنتج'}"؟\nلا يمكن التراجع عن هذا الإجراء.`)) return;
+    const { error } = await sb.from('products').delete().eq('id', id).eq('user_id', currentUser.id);
+    if (error) toast(error.message, 'error');
+    else { toast('🗑️ تم حذف المنتج'); loadProducts(); }
+}
+
+// ─── Excel Export ─────────────────────────────
+function exportToExcel() {
+    if (!filteredProducts.length) { toast('لا توجد بيانات للتصدير', 'error'); return; }
+    const rows = filteredProducts.map(p => ({
+        'اسم المنتج': p.name,
+        'الكمية': p.quantity || 0,
+        'سعر البيع': p.price,
+        'سعر الشراء': p.cost_price || 0,
+        'الربح الإجمالي': ((p.price - (p.cost_price || 0)) * (p.quantity || 0)).toFixed(2),
+        'هامش الربح %': p.cost_price > 0 ? Math.round(((p.price - p.cost_price) / p.cost_price) * 100) + '%' : '-',
+        'الباركود': p.barcode || '',
+        'تاريخ الانتهاء': p.expiry_date || '',
+        'الوصف': p.description || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'المنتجات');
+    XLSX.writeFile(wb, `منتجات_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast('✅ تم تصدير الملف بنجاح');
+}
+</script>
 </body>
 </html>
