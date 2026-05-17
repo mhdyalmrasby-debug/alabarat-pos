@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الموردين والمشتريات - العبرات</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:#0a0a0a;--card:#1a1a1a;--border:#2a2a2a;--text:#f5f5f5;
+  --gold:#d4af37;--green:#00c853;--red:#ff5252;--blue:#2196f3;
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif}
+body{background:var(--bg);color:var(--text);padding:2rem}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
+.btn{padding:.8rem 1.5rem;border:none;border-radius:8px;cursor:pointer;font-weight:700}
+.btn-primary{background:var(--gold);color:#000}
+.btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--border)}
+.btn-blue{background:var(--blue);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+.card{background:var(--card);padding:1.5rem;border-radius:12px;border:1px solid var(--border)}
+input,select,textarea{width:100%;padding:.8rem;margin:.5rem 0;background:#111;border:1px solid var(--border);color:var(--text);border-radius:8px}
+.list-item{padding:.8rem;border-bottom:1px solid var(--border)}
+.balance{font-size:1.5rem;font-weight:700}
+.balance.debit{color:var(--red)}
+.balance.credit{color:var(--green)}
+.tab{display:none}
+.tab.active{display:block}
+table{width:100%;border-collapse:collapse}
+th,td{padding:.8rem;text-align:right;border-bottom:1px solid var(--border)}
+th{background:#111}
+@media(max-width:1024px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📦 الموردين والمشتريات</h1>
+  <div>
+    <button class="btn btn-secondary" onclick="showTab('suppliers')">الموردين</button>
+    <button class="btn btn-secondary" onclick="showTab('invoices')">الفواتير</button>
+    <button class="btn btn-secondary" onclick="showTab('statement')">كشف الحساب</button>
+    <button class="btn btn-secondary" onclick="window.location.href='dashboard.html'">← المتجر</button>
+  </div>
+</div>
+
+<div id="tab-suppliers" class="tab active">
+  <div class="grid">
+    <div class="card">
+      <h3>إضافة مورد</h3>
+      <input id="supName" placeholder="اسم المورد">
+      <input id="supPhone" placeholder="الجوال">
+      <input id="supEmail" placeholder="الإيميل">
+      <textarea id="supAddress" placeholder="العنوان"></textarea>
+      <button class="btn btn-primary" onclick="addSupplier()">إضافة</button>
+    </div>
+    <div class="card" style="grid-column:span 2">
+      <h3>قائمة الموردين</h3>
+      <div id="suppliersList" style="max-height:400px;overflow:auto"></div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-invoices" class="tab">
+  <div class="grid">
+    <div class="card">
+      <h3>إنشاء فاتورة مشتريات</h3>
+      <select id="invSupplier"></select>
+      <input id="invNo" placeholder="رقم الفاتورة">
+      <input id="invDate" type="date">
+      <textarea id="invNotes" placeholder="ملاحظات"></textarea>
+      <h4 style="margin-top:1rem">أصناف الفاتورة</h4>
+      <div id="itemsList"></div>
+      <button class="btn btn-secondary" onclick="addItemRow()">+ إضافة صنف</button>
+      <h4 style="margin-top:1rem">الإجمالي: <span id="invTotal">0.00</span> ر.س</h4>
+      <button class="btn btn-primary" onclick="saveInvoice()">حفظ الفاتورة</button>
+    </div>
+    <div class="card" style="grid-column:span 2">
+      <h3>آخر الفواتير</h3>
+      <div id="invoicesList" style="max-height:400px;overflow:auto"></div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-statement" class="tab">
+  <div class="card">
+    <h3>كشف حساب المورد</h3>
+    <select id="stmtSupplier" onchange="loadStatement()"></select>
+    <div id="statementContent" style="margin-top:1rem">
+      <div class="grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="card">
+          <div>إجمالي المشتريات</div>
+          <div class="balance debit" id="totalPurchases">0.00 ر.س</div>
+        </div>
+        <div class="card">
+          <div>إجمالي المدفوعات</div>
+          <div class="balance credit" id="totalPayments">0.00 ر.س</div>
+        </div>
+        <div class="card">
+          <div>الرصيد المستحق</div>
+          <div class="balance debit" id="balanceDue">0.00 ر.س</div>
+        </div>
+      </div>
+      <h4 style="margin-top:1.5rem">تسجيل سداد</h4>
+      <input id="payAmount" type="number" placeholder="المبلغ" step="0.01">
+      <select id="payMethod">
+        <option value="cash">نقدي</option>
+        <option value="bank">تحويل بنكي</option>
+        <option value="check">شيك</option>
+      </select>
+      <textarea id="payNotes" placeholder="ملاحظات"></textarea>
+      <button class="btn btn-blue" onclick="addPayment()">تسجيل الدفعة</button>
+      <h4 style="margin-top:1.5rem">الحركات</h4>
+      <div id="transactionsList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://jgekcfwacinmxkylrdpm.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZWtjZndhY2lubXhreWxyZHBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTQxNTYsImV4cCI6MjA5NDI3MDE1Nn0._RA5UoWuUyPM0G4aGd9m2LOcsaEiMan2-Lvx60Cnf4Y';
+
+// مهم: استخدم sb في كل مكان تحت
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let itemsCounter = 0;
+
+window.onload = () => {
+  document.getElementById('invDate').valueAsDate = new Date();
+  loadSuppliers();
+  loadInvoices();
+  addItemRow();
+}
+
+function showTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+async function addSupplier() {
+  const name = document.getElementById('supName').value.trim();
+  if (!name) return alert('اكتب اسم المورد');
+  
+  const { error } = await sb.from('suppliers').insert({
+    name,
+    phone: document.getElementById('supPhone').value,
+    email: document.getElementById('supEmail').value,
+    address: document.getElementById('supAddress').value
+  });
+  
+  if (error) return alert('خطأ: ' + error.message);
+  alert('تمت إضافة المورد');
+  document.getElementById('supName').value = '';
+  document.getElementById('supPhone').value = '';
+  document.getElementById('supEmail').value = '';
+  document.getElementById('supAddress').value = '';
+  loadSuppliers();
+}
+
+async function loadSuppliers() {
+  const { data, error } = await sb.from('suppliers').select('*').order('created_at', { ascending: false });
+  if (error) { console.error(error); return; }
+  
+  document.getElementById('suppliersList').innerHTML = data.map(s => 
+    `<div class="list-item">
+      <strong>${s.name}</strong><br>
+      ${s.phone || ''} | ${s.email || ''}<br>
+      <small>${s.address || ''}</small>
+    </div>`
+  ).join('');
+  
+  const options = '<option value="">اختر المورد</option>' + 
+    data.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  
+  document.getElementById('invSupplier').innerHTML = options;
+  document.getElementById('stmtSupplier').innerHTML = options;
+}
+
+function addItemRow() {
+  itemsCounter++;
+  const div = document.createElement('div');
+  div.id = 'item-' + itemsCounter;
+  div.innerHTML = `
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:.5rem;margin-bottom:.5rem">
+      <input placeholder="اسم الصنف" id="itemName${itemsCounter}">
+      <input type="number" placeholder="الكمية" id="itemQty${itemsCounter}" value="1" onchange="calcTotal()">
+      <input type="number" placeholder="السعر" id="itemCost${itemsCounter}" step="0.01" onchange="calcTotal()">
+      <button class="btn btn-secondary" onclick="removeItemRow(${itemsCounter})">حذف</button>
+    </div>
+  `;
+  document.getElementById('itemsList').appendChild(div);
+}
+
+function removeItemRow(id) {
+  document.getElementById('item-' + id).remove();
+  calcTotal();
+}
+
+function calcTotal() {
+  let total = 0;
+  for(let i=1; i<=itemsCounter; i++) {
+    const qty = parseFloat(document.getElementById('itemQty'+i)?.value) || 0;
+    const cost = parseFloat(document.getElementById('itemCost'+i)?.value) || 0;
+    total += qty * cost;
+  }
+  document.getElementById('invTotal').textContent = total.toFixed(2);
+}
+
+async function saveInvoice() {
+  const supplier_id = document.getElementById('invSupplier').value;
+  if (!supplier_id) return alert('اختر المورد');
+  
+  const items = [];
+  for(let i=1; i<=itemsCounter; i++) {
+    const name = document.getElementById('itemName'+i)?.value;
+    if (name) {
+      items.push({
+        item_name: name,
+        qty: parseInt(document.getElementById('itemQty'+i).value) || 0,
+        unit_cost: parseFloat(document.getElementById('itemCost'+i).value) || 0
+      });
+    }
+  }
+  
+  if (items.length === 0) return alert('أضف صنف واحد على الأقل');
+  
+  const total = items.reduce((sum, i) => sum + (i.qty * i.unit_cost), 0);
+  
+  const { data: invoice, error } = await sb.from('purchase_invoices').insert({
+    invoice_no: document.getElementById('invNo').value,
+    supplier_id,
+    invoice_date: document.getElementById('invDate').value,
+    total_amount: total,
+    notes: document.getElementById('invNotes').value
+  }).select().single();
+  
+  if (error) return alert('خطأ: ' + error.message);
+  
+  const itemsWithInvoiceId = items.map(i => ({...i, invoice_id: invoice.id}));
+  await sb.from('invoice_items').insert(itemsWithInvoiceId);
+  
+  alert('تم حفظ الفاتورة');
+  document.getElementById('itemsList').innerHTML = '';
+  itemsCounter = 0;
+  addItemRow();
+  calcTotal();
+  loadInvoices();
+  loadStatement();
+}
+
+async function loadInvoices() {
+  const { data, error } = await sb.from('purchase_invoices')
+    .select('*, suppliers(name)')
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) { console.error(error); return; }
+  
+  document.getElementById('invoicesList').innerHTML = `
+    <table>
+      <tr><th>رقم الفاتورة</th><th>المورد</th><th>التاريخ</th><th>المبلغ</th><th>الحالة</th></tr>
+      ${data.map(inv => `
+        <tr>
+          <td>${inv.invoice_no || '-'}</td>
+          <td>${inv.suppliers?.name || '-'}</td>
+          <td>${inv.invoice_date}</td>
+          <td>${parseFloat(inv.total_amount).toFixed(2)} ر.س</td>
+          <td style="color:${inv.status=='paid'?'var(--green)':inv.status=='partial'?'var(--gold)':'var(--red)'}">${inv.status}</td>
+        </tr>
+      `).join('')}
+    </table>
+  `;
+}
+
+async function loadStatement() {
+  const supplier_id = document.getElementById('stmtSupplier').value;
+  if (!supplier_id) return;
+  
+  const { data: invoices } = await sb.from('purchase_invoices')
+    .select('*').eq('supplier_id', supplier_id).order('invoice_date');
+  
+  const { data: payments } = await sb.from('supplier_payments')
+    .select('*').eq('supplier_id', supplier_id).order('payment_date');
+  
+  const totalPurchases = (invoices || []).reduce((sum, i) => sum + parseFloat(i.total_amount), 0);
+  const totalPayments = (payments || []).reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  const balance = totalPurchases - totalPayments;
+  
+  document.getElementById('totalPurchases').textContent = totalPurchases.toFixed(2) + ' ر.س';
+  document.getElementById('totalPayments').textContent = totalPayments.toFixed(2) + ' ر.س';
+  document.getElementById('balanceDue').textContent = balance.toFixed(2) + ' ر.س';
+  
+  const transactions = [
+    ...(invoices || []).map(i => ({date: i.invoice_date, type: 'فاتورة', desc: i.invoice_no, debit: i.total_amount, credit: 0})),
+    ...(payments || []).map(p => ({date: p.payment_date, type: 'سداد', desc: p.payment_method, debit: 0, credit: p.amount}))
+  ].sort((a,b) => new Date(a.date) - new Date(b.date));
+  
+  document.getElementById('transactionsList').innerHTML = `
+    <table>
+      <tr><th>التاريخ</th><th>النوع</th><th>البيان</th><th>مدين</th><th>دائن</th></tr>
+      ${transactions.map(t => `
+        <tr>
+          <td>${t.date}</td>
+          <td>${t.type}</td>
+          <td>${t.desc || '-'}</td>
+          <td>${t.debit > 0 ? parseFloat(t.debit).toFixed(2) : '-'}</td>
+          <td>${t.credit > 0 ? parseFloat(t.credit).toFixed(2) : '-'}</td>
+        </tr>
+      `).join('')}
+    </table>
+  `;
+}
+
+async function addPayment() {
+  const supplier_id = document.getElementById('stmtSupplier').value;
+  const amount = parseFloat(document.getElementById('payAmount').value);
+  
+  if (!supplier_id || !amount) return alert('اختر المورد وأدخل المبلغ');
+  
+  const { error } = await sb.from('supplier_payments').insert({
+    supplier_id,
+    amount,
+    payment_method: document.getElementById('payMethod').value,
+    notes: document.getElementById('payNotes').value
+  });
+  
+  if (error) return alert('خطأ: ' + error.message);
+  
+  alert('تم تسجيل الدفعة');
+  document.getElementById('payAmount').value = '';
+  document.getElementById('payNotes').value = '';
+  loadStatement();
+}
+</script>
+</body>
+</html>
