@@ -8,7 +8,7 @@
 <style>
 :root {
   --bg:#0a0a0a;--card:#1a1a1a;--border:#2a2a2a;--text:#f5f5f5;
-  --gold:#d4af37;--green:#00c853;--red:#ff5252;--blue:#2196f3;
+  --gold:#d4af37;--green:#00c853;--red:#ff5252;--blue:#2196f3;--orange:#ff9800;
 }
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif}
 body{background:var(--bg);color:var(--text);padding:2rem}
@@ -17,10 +17,14 @@ body{background:var(--bg);color:var(--text);padding:2rem}
 .btn-primary{background:var(--gold);color:#000}
 .btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--border)}
 .btn-blue{background:var(--blue);color:#fff}
+.btn-orange{background:var(--orange);color:#fff}
+.btn-small{padding:.4rem.8rem;font-size:.85rem}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
 .card{background:var(--card);padding:1.5rem;border-radius:12px;border:1px solid var(--border)}
 input,select,textarea{width:100%;padding:.8rem;margin:.5rem 0;background:#111;border:1px solid var(--border);color:var(--text);border-radius:8px}
-.list-item{padding:.8rem;border-bottom:1px solid var(--border)}
+.list-item{padding:1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.list-item-info{flex:1}
+.list-item-actions{display:flex;gap:.5rem}
 .balance{font-size:1.5rem;font-weight:700}
 .balance.debit{color:var(--red)}
 .balance.credit{color:var(--green)}
@@ -29,6 +33,9 @@ input,select,textarea{width:100%;padding:.8rem;margin:.5rem 0;background:#111;bo
 table{width:100%;border-collapse:collapse}
 th,td{padding:.8rem;text-align:right;border-bottom:1px solid var(--border)}
 th{background:#111}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);z-index:1000;align-items:center;justify-content:center}
+.modal.active{display:flex}
+.modal-content{background:var(--card);padding:2rem;border-radius:12px;width:90%;max-width:600px;max-height:90vh;overflow:auto;border:1px solid var(--border)}
 @media(max-width:1024px){.grid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -47,15 +54,18 @@ th{background:#111}
 <div id="tab-suppliers" class="tab active">
   <div class="grid">
     <div class="card">
-      <h3>إضافة مورد</h3>
+      <h3 id="supplierFormTitle">إضافة مورد</h3>
       <input id="supName" placeholder="اسم المورد">
       <input id="supPhone" placeholder="الجوال">
       <input id="supEmail" placeholder="الإيميل">
       <textarea id="supAddress" placeholder="العنوان"></textarea>
-      <button class="btn btn-primary" onclick="addSupplier()">إضافة</button>
+      <button class="btn btn-primary" id="saveSupplierBtn" onclick="saveSupplier()">إضافة</button>
+      <button class="btn btn-secondary" id="cancelEditBtn" onclick="cancelEditSupplier()" style="display:none">إلغاء</button>
+      <input type="hidden" id="editSupplierId">
     </div>
     <div class="card" style="grid-column:span 2">
       <h3>قائمة الموردين</h3>
+      <input id="searchSupplier" placeholder="ابحث بالاسم أو الجوال..." onkeyup="filterSuppliers()" style="margin-bottom:1rem">
       <div id="suppliersList" style="max-height:400px;overflow:auto"></div>
     </div>
   </div>
@@ -64,7 +74,7 @@ th{background:#111}
 <div id="tab-invoices" class="tab">
   <div class="grid">
     <div class="card">
-      <h3>إنشاء فاتورة مشتريات</h3>
+      <h3 id="invoiceFormTitle">إنشاء فاتورة مشتريات</h3>
       <select id="invSupplier"></select>
       <input id="invNo" placeholder="رقم الفاتورة">
       <input id="invDate" type="date">
@@ -73,7 +83,9 @@ th{background:#111}
       <div id="itemsList"></div>
       <button class="btn btn-secondary" onclick="addItemRow()">+ إضافة صنف</button>
       <h4 style="margin-top:1rem">الإجمالي: <span id="invTotal">0.00</span> ر.س</h4>
-      <button class="btn btn-primary" onclick="saveInvoice()">حفظ الفاتورة</button>
+      <button class="btn btn-primary" id="saveInvoiceBtn" onclick="saveInvoice()">حفظ الفاتورة</button>
+      <button class="btn btn-secondary" id="cancelEditInvoiceBtn" onclick="cancelEditInvoice()" style="display:none">إلغاء</button>
+      <input type="hidden" id="editInvoiceId">
     </div>
     <div class="card" style="grid-column:span 2">
       <h3>آخر الفواتير</h3>
@@ -110,7 +122,12 @@ th{background:#111}
       </select>
       <textarea id="payNotes" placeholder="ملاحظات"></textarea>
       <button class="btn btn-blue" onclick="addPayment()">تسجيل الدفعة</button>
-      <h4 style="margin-top:1.5rem">الحركات</h4>
+      <h4 style="margin-top:1.5rem">
+        الحركات
+        <button class="btn btn-secondary" style="float:left;padding:.4rem.8rem;font-size:.9rem" onclick="exportStatementCSV()">
+          📥 تصدير CSV
+        </button>
+      </h4>
       <div id="transactionsList"></div>
     </div>
   </div>
@@ -120,9 +137,9 @@ th{background:#111}
 const SUPABASE_URL = 'https://jgekcfwacinmxkylrdpm.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZWtjZndhY2lubXhreWxyZHBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTQxNTYsImV4cCI6MjA5NDI3MDE1Nn0._RA5UoWuUyPM0G4aGd9m2LOcsaEiMan2-Lvx60Cnf4Y';
 
-// مهم: استخدم sb في كل مكان تحت
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let itemsCounter = 0;
+let allSuppliers = [];
 
 window.onload = () => {
   document.getElementById('invDate').valueAsDate = new Date();
@@ -136,58 +153,123 @@ function showTab(tab) {
   document.getElementById('tab-' + tab).classList.add('active');
 }
 
-async function addSupplier() {
-  const name = document.getElementById('supName').value.trim();
-  if (!name) return alert('اكتب اسم المورد');
-  
-  const { error } = await sb.from('suppliers').insert({
-    name,
+// ==================== الموردين ====================
+async function saveSupplier() {
+  const id = document.getElementById('editSupplierId').value;
+  const data = {
+    name: document.getElementById('supName').value.trim(),
     phone: document.getElementById('supPhone').value,
     email: document.getElementById('supEmail').value,
     address: document.getElementById('supAddress').value
-  });
-  
+  };
+
+  if (!data.name) return alert('اكتب اسم المورد');
+
+  let error;
+  if (id) {
+    ({ error } = await sb.from('suppliers').update(data).eq('id', id));
+  } else {
+    ({ error } = await sb.from('suppliers').insert(data));
+  }
+
   if (error) return alert('خطأ: ' + error.message);
-  alert('تمت إضافة المورد');
+
+  alert(id? 'تم تحديث المورد' : 'تمت إضافة المورد');
+  cancelEditSupplier();
+  loadSuppliers();
+}
+
+function editSupplier(id) {
+  const supplier = allSuppliers.find(s => s.id == id);
+  if (!supplier) return;
+
+  document.getElementById('editSupplierId').value = id;
+  document.getElementById('supName').value = supplier.name;
+  document.getElementById('supPhone').value = supplier.phone || '';
+  document.getElementById('supEmail').value = supplier.email || '';
+  document.getElementById('supAddress').value = supplier.address || '';
+
+  document.getElementById('supplierFormTitle').textContent = 'تعديل المورد';
+  document.getElementById('saveSupplierBtn').textContent = 'تحديث';
+  document.getElementById('cancelEditBtn').style.display = 'inline-block';
+}
+
+function cancelEditSupplier() {
+  document.getElementById('editSupplierId').value = '';
   document.getElementById('supName').value = '';
   document.getElementById('supPhone').value = '';
   document.getElementById('supEmail').value = '';
   document.getElementById('supAddress').value = '';
+
+  document.getElementById('supplierFormTitle').textContent = 'إضافة مورد';
+  document.getElementById('saveSupplierBtn').textContent = 'إضافة';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+}
+
+async function deleteSupplier(id) {
+  if (!confirm('هل أنت متأكد من حذف المورد؟ سيتم حذف فواتيره أيضاً')) return;
+
+  const { error } = await sb.from('suppliers').delete().eq('id', id);
+  if (error) return alert('خطأ: ' + error.message);
+
+  alert('تم الحذف');
   loadSuppliers();
 }
 
 async function loadSuppliers() {
-  const { data, error } = await sb.from('suppliers').select('*').order('created_at', { ascending: false });
+  const { data, error } = await sb.from('suppliers').select('*').order('name', { ascending: true });
   if (error) { console.error(error); return; }
-  
-  document.getElementById('suppliersList').innerHTML = data.map(s => 
+
+  allSuppliers = data;
+  renderSuppliers(data);
+}
+
+function renderSuppliers(data) {
+  document.getElementById('suppliersList').innerHTML = data.map(s =>
     `<div class="list-item">
-      <strong>${s.name}</strong><br>
-      ${s.phone || ''} | ${s.email || ''}<br>
-      <small>${s.address || ''}</small>
+      <div class="list-item-info">
+        <strong>${s.name}</strong><br>
+        ${s.phone || ''} | ${s.email || ''}<br>
+        <small>${s.address || ''}</small>
+      </div>
+      <div class="list-item-actions">
+        <button class="btn btn-orange btn-small" onclick="editSupplier('${s.id}')">تعديل</button>
+        <button class="btn btn-secondary btn-small" onclick="deleteSupplier('${s.id}')">حذف</button>
+      </div>
     </div>`
   ).join('');
-  
-  const options = '<option value="">اختر المورد</option>' + 
+
+  const options = '<option value="">اختر المورد</option>' +
     data.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-  
+
   document.getElementById('invSupplier').innerHTML = options;
   document.getElementById('stmtSupplier').innerHTML = options;
 }
 
-function addItemRow() {
+function filterSuppliers() {
+  const search = document.getElementById('searchSupplier').value.toLowerCase();
+  const filtered = allSuppliers.filter(s =>
+    s.name.toLowerCase().includes(search) ||
+    (s.phone && s.phone.includes(search))
+  );
+  renderSuppliers(filtered);
+}
+
+// ==================== الفواتير ====================
+function addItemRow(item = null) {
   itemsCounter++;
   const div = document.createElement('div');
   div.id = 'item-' + itemsCounter;
   div.innerHTML = `
     <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:.5rem;margin-bottom:.5rem">
-      <input placeholder="اسم الصنف" id="itemName${itemsCounter}">
-      <input type="number" placeholder="الكمية" id="itemQty${itemsCounter}" value="1" onchange="calcTotal()">
-      <input type="number" placeholder="السعر" id="itemCost${itemsCounter}" step="0.01" onchange="calcTotal()">
+      <input placeholder="اسم الصنف" id="itemName${itemsCounter}" value="${item?.item_name || ''}">
+      <input type="number" placeholder="الكمية" id="itemQty${itemsCounter}" value="${item?.qty || 1}" onchange="calcTotal()">
+      <input type="number" placeholder="السعر" id="itemCost${itemsCounter}" step="0.01" value="${item?.unit_cost || ''}" onchange="calcTotal()">
       <button class="btn btn-secondary" onclick="removeItemRow(${itemsCounter})">حذف</button>
     </div>
   `;
   document.getElementById('itemsList').appendChild(div);
+  calcTotal();
 }
 
 function removeItemRow(id) {
@@ -206,9 +288,10 @@ function calcTotal() {
 }
 
 async function saveInvoice() {
+  const id = document.getElementById('editInvoiceId').value;
   const supplier_id = document.getElementById('invSupplier').value;
   if (!supplier_id) return alert('اختر المورد');
-  
+
   const items = [];
   for(let i=1; i<=itemsCounter; i++) {
     const name = document.getElementById('itemName'+i)?.value;
@@ -220,43 +303,102 @@ async function saveInvoice() {
       });
     }
   }
-  
+
   if (items.length === 0) return alert('أضف صنف واحد على الأقل');
-  
+
   const total = items.reduce((sum, i) => sum + (i.qty * i.unit_cost), 0);
-  
-  const { data: invoice, error } = await sb.from('purchase_invoices').insert({
+  const invoiceData = {
     invoice_no: document.getElementById('invNo').value,
     supplier_id,
     invoice_date: document.getElementById('invDate').value,
     total_amount: total,
     notes: document.getElementById('invNotes').value
-  }).select().single();
-  
+  };
+
+  let invoice, error;
+  if (id) {
+    ({ error } = await sb.from('purchase_invoices').update(invoiceData).eq('id', id));
+    await sb.from('invoice_items').delete().eq('invoice_id', id);
+    invoice = { id };
+  } else {
+    ({ data: invoice, error } = await sb.from('purchase_invoices').insert(invoiceData).select().single());
+  }
+
   if (error) return alert('خطأ: ' + error.message);
-  
+
   const itemsWithInvoiceId = items.map(i => ({...i, invoice_id: invoice.id}));
   await sb.from('invoice_items').insert(itemsWithInvoiceId);
-  
-  alert('تم حفظ الفاتورة');
+
+  alert(id? 'تم تحديث الفاتورة' : 'تم حفظ الفاتورة');
+  cancelEditInvoice();
+  loadInvoices();
+  loadStatement();
+}
+
+function editInvoice(id) {
+  loadInvoiceForEdit(id);
+}
+
+async function loadInvoiceForEdit(id) {
+  const { data: invoice } = await sb.from('purchase_invoices').select('*').eq('id', id).single();
+  const { data: items } = await sb.from('invoice_items').select('*').eq('invoice_id', id);
+
+  if (!invoice) return;
+
+  document.getElementById('editInvoiceId').value = id;
+  document.getElementById('invSupplier').value = invoice.supplier_id;
+  document.getElementById('invNo').value = invoice.invoice_no || '';
+  document.getElementById('invDate').value = invoice.invoice_date;
+  document.getElementById('invNotes').value = invoice.notes || '';
+
+  document.getElementById('itemsList').innerHTML = '';
+  itemsCounter = 0;
+  items.forEach(item => addItemRow(item));
+
+  document.getElementById('invoiceFormTitle').textContent = 'تعديل الفاتورة';
+  document.getElementById('saveInvoiceBtn').textContent = 'تحديث';
+  document.getElementById('cancelEditInvoiceBtn').style.display = 'inline-block';
+
+  showTab('invoices');
+}
+
+function cancelEditInvoice() {
+  document.getElementById('editInvoiceId').value = '';
+  document.getElementById('invSupplier').value = '';
+  document.getElementById('invNo').value = '';
+  document.getElementById('invDate').valueAsDate = new Date();
+  document.getElementById('invNotes').value = '';
   document.getElementById('itemsList').innerHTML = '';
   itemsCounter = 0;
   addItemRow();
   calcTotal();
+
+  document.getElementById('invoiceFormTitle').textContent = 'إنشاء فاتورة مشتريات';
+  document.getElementById('saveInvoiceBtn').textContent = 'حفظ الفاتورة';
+  document.getElementById('cancelEditInvoiceBtn').style.display = 'none';
+}
+
+async function deleteInvoice(id) {
+  if (!confirm('هل أنت متأكد من حذف الفاتورة؟')) return;
+
+  const { error } = await sb.from('purchase_invoices').delete().eq('id', id);
+  if (error) return alert('خطأ: ' + error.message);
+
+  alert('تم الحذف');
   loadInvoices();
   loadStatement();
 }
 
 async function loadInvoices() {
   const { data, error } = await sb.from('purchase_invoices')
-    .select('*, suppliers(name)')
-    .order('created_at', { ascending: false })
-    .limit(50);
+   .select('*, suppliers(name)')
+   .order('created_at', { ascending: false })
+   .limit(50);
   if (error) { console.error(error); return; }
-  
+
   document.getElementById('invoicesList').innerHTML = `
     <table>
-      <tr><th>رقم الفاتورة</th><th>المورد</th><th>التاريخ</th><th>المبلغ</th><th>الحالة</th></tr>
+      <tr><th>رقم الفاتورة</th><th>المورد</th><th>التاريخ</th><th>المبلغ</th><th>الحالة</th><th>الإجراءات</th></tr>
       ${data.map(inv => `
         <tr>
           <td>${inv.invoice_no || '-'}</td>
@@ -264,35 +406,40 @@ async function loadInvoices() {
           <td>${inv.invoice_date}</td>
           <td>${parseFloat(inv.total_amount).toFixed(2)} ر.س</td>
           <td style="color:${inv.status=='paid'?'var(--green)':inv.status=='partial'?'var(--gold)':'var(--red)'}">${inv.status}</td>
+          <td>
+            <button class="btn btn-orange btn-small" onclick="editInvoice('${inv.id}')">تعديل</button>
+            <button class="btn btn-secondary btn-small" onclick="deleteInvoice('${inv.id}')">حذف</button>
+          </td>
         </tr>
       `).join('')}
     </table>
   `;
 }
 
+// ==================== كشف الحساب ====================
 async function loadStatement() {
   const supplier_id = document.getElementById('stmtSupplier').value;
   if (!supplier_id) return;
-  
+
   const { data: invoices } = await sb.from('purchase_invoices')
-    .select('*').eq('supplier_id', supplier_id).order('invoice_date');
-  
+   .select('*').eq('supplier_id', supplier_id).order('invoice_date');
+
   const { data: payments } = await sb.from('supplier_payments')
-    .select('*').eq('supplier_id', supplier_id).order('payment_date');
-  
+   .select('*').eq('supplier_id', supplier_id).order('payment_date');
+
   const totalPurchases = (invoices || []).reduce((sum, i) => sum + parseFloat(i.total_amount), 0);
   const totalPayments = (payments || []).reduce((sum, p) => sum + parseFloat(p.amount), 0);
   const balance = totalPurchases - totalPayments;
-  
+
   document.getElementById('totalPurchases').textContent = totalPurchases.toFixed(2) + ' ر.س';
   document.getElementById('totalPayments').textContent = totalPayments.toFixed(2) + ' ر.س';
   document.getElementById('balanceDue').textContent = balance.toFixed(2) + ' ر.س';
-  
+
   const transactions = [
-    ...(invoices || []).map(i => ({date: i.invoice_date, type: 'فاتورة', desc: i.invoice_no, debit: i.total_amount, credit: 0})),
-    ...(payments || []).map(p => ({date: p.payment_date, type: 'سداد', desc: p.payment_method, debit: 0, credit: p.amount}))
+   ...(invoices || []).map(i => ({date: i.invoice_date, type: 'فاتورة', desc: i.invoice_no, debit: i.total_amount, credit: 0})),
+   ...(payments || []).map(p => ({date: p.payment_date, type: 'سداد', desc: p.payment_method, debit: 0, credit: p.amount}))
   ].sort((a,b) => new Date(a.date) - new Date(b.date));
-  
+
   document.getElementById('transactionsList').innerHTML = `
     <table>
       <tr><th>التاريخ</th><th>النوع</th><th>البيان</th><th>مدين</th><th>دائن</th></tr>
@@ -301,8 +448,8 @@ async function loadStatement() {
           <td>${t.date}</td>
           <td>${t.type}</td>
           <td>${t.desc || '-'}</td>
-          <td>${t.debit > 0 ? parseFloat(t.debit).toFixed(2) : '-'}</td>
-          <td>${t.credit > 0 ? parseFloat(t.credit).toFixed(2) : '-'}</td>
+          <td>${t.debit > 0? parseFloat(t.debit).toFixed(2) : '-'}</td>
+          <td>${t.credit > 0? parseFloat(t.credit).toFixed(2) : '-'}</td>
         </tr>
       `).join('')}
     </table>
@@ -312,22 +459,50 @@ async function loadStatement() {
 async function addPayment() {
   const supplier_id = document.getElementById('stmtSupplier').value;
   const amount = parseFloat(document.getElementById('payAmount').value);
-  
-  if (!supplier_id || !amount) return alert('اختر المورد وأدخل المبلغ');
-  
+
+  if (!supplier_id ||!amount) return alert('اختر المورد وأدخل المبلغ');
+
   const { error } = await sb.from('supplier_payments').insert({
     supplier_id,
     amount,
     payment_method: document.getElementById('payMethod').value,
     notes: document.getElementById('payNotes').value
   });
-  
+
   if (error) return alert('خطأ: ' + error.message);
-  
+
   alert('تم تسجيل الدفعة');
   document.getElementById('payAmount').value = '';
   document.getElementById('payNotes').value = '';
   loadStatement();
+}
+
+function exportStatementCSV() {
+  const supplierSelect = document.getElementById('stmtSupplier');
+  const supplier_id = supplierSelect.value;
+  if (!supplier_id) return alert('اختر مورد أولاً');
+
+  const supplierName = supplierSelect.options[supplierSelect.selectedIndex].text;
+  const rows = document.querySelectorAll('#transactionsList table tr');
+
+  if (rows.length <= 1) return alert('لا توجد حركات للتصدير');
+
+  let csv = 'التاريخ,النوع,البيان,مدين,دائن\n';
+  for (let i = 1; i < rows.length; i++) {
+    const cells = rows[i].querySelectorAll('td');
+    const row = Array.from(cells).map(td => `"${td.textContent.trim()}"`).join(',');
+    csv += row + '\n';
+  }
+
+  const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `كشف_حساب_${supplierName}_${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 </script>
 </body>
